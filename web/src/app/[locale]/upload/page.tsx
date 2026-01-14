@@ -1,0 +1,630 @@
+"use client";
+
+import { useState, useEffect, Suspense } from "react";
+import { useTranslations } from "next-intl";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import Image from "next/image";
+import {
+    Search,
+    Upload,
+    FileArchive,
+    FolderCog,
+    X,
+    Check,
+    AlertCircle,
+    Loader2,
+} from "lucide-react";
+import Button from "@/components/ui/Button";
+
+interface ModpackInfo {
+    id: number;
+    name: string;
+    slug: string;
+    summary: string;
+    logoUrl: string | null;
+    author: string | null;
+    gameVersions: string[];
+    downloadCount: number;
+}
+
+const LANGUAGE_OPTIONS = [
+    { value: "en_us", label: "English" },
+    { value: "ko_kr", label: "한국어" },
+    { value: "ja_jp", label: "日本語" },
+    { value: "zh_cn", label: "简体中文" },
+    { value: "zh_tw", label: "繁體中文" },
+];
+
+function UploadContent() {
+    const t = useTranslations();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const { data: session } = useSession();
+
+    const [step, setStep] = useState(1);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
+
+    // Step 1: Modpack
+    const [searchQuery, setSearchQuery] = useState(searchParams.get("modpack") || "");
+    const [modpack, setModpack] = useState<ModpackInfo | null>(null);
+
+    // Step 2: Files
+    const [resourcePack, setResourcePack] = useState<File | null>(null);
+    const [overrideFile, setOverrideFile] = useState<File | null>(null);
+
+    // Step 3: Metadata
+    const [modpackVersion, setModpackVersion] = useState("");
+    const [sourceLang, setSourceLang] = useState("en_us");
+    const [targetLang, setTargetLang] = useState("ko_kr");
+    const [isManualTranslation, setIsManualTranslation] = useState(false);
+    const [llmModel, setLlmModel] = useState("");
+    const [temperature, setTemperature] = useState("");
+    const [batchSize, setBatchSize] = useState("");
+    const [usedGlossary, setUsedGlossary] = useState(false);
+    const [reviewed, setReviewed] = useState(false);
+    const [anonymous, setAnonymous] = useState(false);
+
+    // Auto-search if modpack ID is in URL
+    useEffect(() => {
+        const modpackId = searchParams.get("modpack");
+        if (modpackId) {
+            handleSearchModpack(modpackId);
+        }
+    }, [searchParams]);
+
+    const handleSearchModpack = async (query?: string) => {
+        const searchValue = query || searchQuery;
+        if (!searchValue) return;
+
+        setLoading(true);
+        setError(null);
+        setModpack(null);
+
+        try {
+            const response = await fetch(`/api/curseforge/${searchValue}`);
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || "Failed to fetch modpack");
+            }
+            const data = await response.json();
+            setModpack(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Unknown error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleFileChange = (
+        e: React.ChangeEvent<HTMLInputElement>,
+        type: "resourcePack" | "overrideFile"
+    ) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (type === "resourcePack") {
+                setResourcePack(file);
+            } else {
+                setOverrideFile(file);
+            }
+        }
+    };
+
+    const handleSubmit = async () => {
+        if (!modpack || !modpackVersion || (!resourcePack && !overrideFile)) {
+            setError("Please fill in all required fields");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            const formData = new FormData();
+            formData.append("curseforgeId", modpack.id.toString());
+            formData.append("modpackVersion", modpackVersion);
+            formData.append("sourceLang", sourceLang);
+            formData.append("targetLang", targetLang);
+            formData.append("isManualTranslation", isManualTranslation.toString());
+            if (!isManualTranslation) {
+                if (llmModel) formData.append("llmModel", llmModel);
+                if (temperature) formData.append("temperature", temperature);
+                if (batchSize) formData.append("batchSize", batchSize);
+                formData.append("usedGlossary", usedGlossary.toString());
+            }
+            formData.append("reviewed", reviewed.toString());
+            formData.append("anonymous", anonymous.toString());
+            if (resourcePack) formData.append("resourcePack", resourcePack);
+            if (overrideFile) formData.append("overrideFile", overrideFile);
+
+            const response = await fetch("/api/translations", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || "Failed to upload");
+            }
+
+            setSuccess(true);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Upload failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (success) {
+        return (
+            <div className="max-w-2xl mx-auto px-4 py-16 text-center animate-fade-in">
+                <div className="w-16 h-16 rounded-full bg-[var(--status-success)]/20 flex items-center justify-center mx-auto mb-6">
+                    <Check className="w-8 h-8 text-[var(--status-success)]" />
+                </div>
+                <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">
+                    {t("upload.success.title")}
+                </h1>
+                <p className="text-[var(--text-secondary)] mb-8">
+                    {t("upload.success.message")}
+                </p>
+                <Button onClick={() => router.push("/modpacks")}>{t("nav.modpacks")}</Button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="max-w-3xl mx-auto px-4 py-8 animate-fade-in">
+            <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-8">
+                {t("upload.title")}
+            </h1>
+
+            {/* Progress Steps */}
+            <div className="flex items-center justify-center gap-4 mb-12">
+                {[1, 2, 3].map((s) => (
+                    <div key={s} className="flex items-center">
+                        <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center font-medium transition-colors ${step >= s
+                                ? "bg-[var(--accent-primary)] text-white"
+                                : "bg-[var(--bg-card)] text-[var(--text-muted)]"
+                                }`}
+                        >
+                            {s}
+                        </div>
+                        {s < 3 && (
+                            <div
+                                className={`w-16 h-1 mx-2 rounded ${step > s ? "bg-[var(--accent-primary)]" : "bg-[var(--bg-card)]"
+                                    }`}
+                            />
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {error && (
+                <div className="mb-6 p-4 rounded-lg bg-[var(--status-error)]/20 text-[var(--status-error)] flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    {error}
+                </div>
+            )}
+
+            {/* Step 1: Modpack Selection */}
+            {step === 1 && (
+                <div className="glass rounded-xl p-6">
+                    <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">
+                        {t("upload.steps.modpack")}
+                    </h2>
+
+                    <div className="space-y-4">
+                        <label className="block">
+                            <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                {t("upload.modpack.searchLabel")}
+                            </span>
+                            <div className="flex gap-3">
+                                <div className="flex-1 relative">
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder={t("upload.modpack.searchPlaceholder")}
+                                        className="w-full"
+                                        onKeyDown={(e) => e.key === "Enter" && handleSearchModpack()}
+                                    />
+                                </div>
+                                <Button
+                                    onClick={() => handleSearchModpack()}
+                                    disabled={loading || !searchQuery}
+                                    loading={loading}
+                                >
+                                    <Search className="w-4 h-4" />
+                                    {t("upload.modpack.searchButton")}
+                                </Button>
+                            </div>
+                        </label>
+
+                        {modpack && (
+                            <div className="mt-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
+                                <div className="flex gap-4">
+                                    {modpack.logoUrl ? (
+                                        <Image
+                                            src={modpack.logoUrl}
+                                            alt={modpack.name}
+                                            width={64}
+                                            height={64}
+                                            className="w-16 h-16 rounded-lg object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-16 h-16 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center">
+                                            <span className="text-2xl font-bold text-[var(--text-muted)]">
+                                                {modpack.name.charAt(0)}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold text-[var(--text-primary)]">
+                                            {modpack.name}
+                                        </h3>
+                                        {modpack.author && (
+                                            <p className="text-sm text-[var(--text-muted)]">
+                                                by {modpack.author}
+                                            </p>
+                                        )}
+                                        <p className="text-sm text-[var(--text-secondary)] mt-1 line-clamp-2">
+                                            {modpack.summary}
+                                        </p>
+                                    </div>
+                                </div>
+                                <p className="text-sm text-[var(--accent-primary)] mt-4">
+                                    {t("upload.modpack.confirm")}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end mt-6">
+                        <Button onClick={() => setStep(2)} disabled={!modpack}>
+                            {t("common.submit")} →
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Step 2: Files */}
+            {step === 2 && (
+                <div className="glass rounded-xl p-6">
+                    <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">
+                        {t("upload.steps.files")}
+                    </h2>
+
+                    <div className="space-y-6">
+                        {/* Resource Pack */}
+                        <div>
+                            <label className="block text-sm text-[var(--text-secondary)] mb-2">
+                                {t("upload.files.resourcePack")}
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="file"
+                                    accept=".zip"
+                                    onChange={(e) => handleFileChange(e, "resourcePack")}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <div
+                                    className={`p-8 rounded-lg border-2 border-dashed transition-colors ${resourcePack
+                                        ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
+                                        : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
+                                        } flex flex-col items-center justify-center gap-3`}
+                                >
+                                    <FileArchive
+                                        className={`w-10 h-10 ${resourcePack
+                                            ? "text-[var(--accent-primary)]"
+                                            : "text-[var(--text-muted)]"
+                                            }`}
+                                    />
+                                    {resourcePack ? (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[var(--text-primary)]">
+                                                {resourcePack.name}
+                                            </span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    setResourcePack(null);
+                                                }}
+                                                className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <span className="text-[var(--text-muted)]">
+                                            {t("upload.files.dropzone")}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Override File */}
+                        <div>
+                            <label className="block text-sm text-[var(--text-secondary)] mb-2">
+                                {t("upload.files.overrideFile")}
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="file"
+                                    accept=".zip"
+                                    onChange={(e) => handleFileChange(e, "overrideFile")}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <div
+                                    className={`p-8 rounded-lg border-2 border-dashed transition-colors ${overrideFile
+                                        ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
+                                        : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
+                                        } flex flex-col items-center justify-center gap-3`}
+                                >
+                                    <FolderCog
+                                        className={`w-10 h-10 ${overrideFile
+                                            ? "text-[var(--accent-primary)]"
+                                            : "text-[var(--text-muted)]"
+                                            }`}
+                                    />
+                                    {overrideFile ? (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[var(--text-primary)]">
+                                                {overrideFile.name}
+                                            </span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    setOverrideFile(null);
+                                                }}
+                                                className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <span className="text-[var(--text-muted)]">
+                                            {t("upload.files.dropzone")}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-between mt-6">
+                        <Button variant="secondary" onClick={() => setStep(1)}>
+                            ← {t("common.cancel")}
+                        </Button>
+                        <Button
+                            onClick={() => setStep(3)}
+                            disabled={!resourcePack && !overrideFile}
+                        >
+                            {t("common.submit")} →
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Step 3: Metadata */}
+            {step === 3 && (
+                <div className="glass rounded-xl p-6">
+                    <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">
+                        {t("upload.steps.metadata")}
+                    </h2>
+
+                    <div className="space-y-4">
+                        {/* Translation Type Selection */}
+                        <div className="mb-6">
+                            <label className="block text-sm text-[var(--text-secondary)] mb-3">
+                                {t("upload.metadata.translationType")}
+                            </label>
+                            <div className="flex gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsManualTranslation(false)}
+                                    className={`flex-1 p-4 rounded-lg border-2 transition-all ${!isManualTranslation
+                                            ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"
+                                            : "border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+                                        }`}
+                                >
+                                    <div className="font-medium">{t("upload.metadata.aiTranslation")}</div>
+                                    <div className="text-xs mt-1 opacity-70">{t("upload.metadata.aiTranslationDesc")}</div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsManualTranslation(true)}
+                                    className={`flex-1 p-4 rounded-lg border-2 transition-all ${isManualTranslation
+                                            ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"
+                                            : "border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+                                        }`}
+                                >
+                                    <div className="font-medium">{t("upload.metadata.manualTranslation")}</div>
+                                    <div className="text-xs mt-1 opacity-70">{t("upload.metadata.manualTranslationDesc")}</div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Version */}
+                            <label className="block">
+                                <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                    {t("upload.metadata.version")} *
+                                </span>
+                                <input
+                                    type="text"
+                                    value={modpackVersion}
+                                    onChange={(e) => setModpackVersion(e.target.value)}
+                                    placeholder={t("upload.metadata.versionPlaceholder")}
+                                    className="w-full"
+                                    required
+                                />
+                            </label>
+
+                            {/* Source Language */}
+                            <label className="block">
+                                <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                    {t("upload.metadata.sourceLang")}
+                                </span>
+                                <select
+                                    value={sourceLang}
+                                    onChange={(e) => setSourceLang(e.target.value)}
+                                    className="w-full"
+                                >
+                                    {LANGUAGE_OPTIONS.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            {/* Target Language */}
+                            <label className="block">
+                                <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                    {t("upload.metadata.targetLang")}
+                                </span>
+                                <select
+                                    value={targetLang}
+                                    onChange={(e) => setTargetLang(e.target.value)}
+                                    className="w-full"
+                                >
+                                    {LANGUAGE_OPTIONS.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            {/* AI-specific fields - only show when not manual */}
+                            {!isManualTranslation && (
+                                <>
+                                    {/* LLM Model */}
+                                    <label className="block">
+                                        <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                            {t("upload.metadata.model")}
+                                        </span>
+                                        <input
+                                            type="text"
+                                            value={llmModel}
+                                            onChange={(e) => setLlmModel(e.target.value)}
+                                            placeholder={t("upload.metadata.modelPlaceholder")}
+                                            className="w-full"
+                                        />
+                                    </label>
+
+                                    {/* Temperature */}
+                                    <label className="block">
+                                        <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                            {t("upload.metadata.temperature")}
+                                        </span>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            min="0"
+                                            max="2"
+                                            value={temperature}
+                                            onChange={(e) => setTemperature(e.target.value)}
+                                            className="w-full"
+                                        />
+                                    </label>
+
+                                    {/* Batch Size */}
+                                    <label className="block">
+                                        <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                            {t("upload.metadata.batchSize")}
+                                        </span>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={batchSize}
+                                            onChange={(e) => setBatchSize(e.target.value)}
+                                            className="w-full"
+                                        />
+                                    </label>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Checkboxes */}
+                        <div className="flex flex-wrap gap-6 mt-4">
+                            {!isManualTranslation && (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={usedGlossary}
+                                        onChange={(e) => setUsedGlossary(e.target.checked)}
+                                        className="w-5 h-5 rounded border-[var(--border-primary)] bg-[var(--bg-secondary)]"
+                                    />
+                                    <span className="text-sm text-[var(--text-secondary)]">
+                                        {t("upload.metadata.usedGlossary")}
+                                    </span>
+                                </label>
+                            )}
+
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={reviewed}
+                                    onChange={(e) => setReviewed(e.target.checked)}
+                                    className="w-5 h-5 rounded border-[var(--border-primary)] bg-[var(--bg-secondary)]"
+                                />
+                                <span className="text-sm text-[var(--text-secondary)]">
+                                    {t("upload.metadata.reviewed")}
+                                </span>
+                            </label>
+
+                            {!session && (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={anonymous}
+                                        onChange={(e) => setAnonymous(e.target.checked)}
+                                        className="w-5 h-5 rounded border-[var(--border-primary)] bg-[var(--bg-secondary)]"
+                                    />
+                                    <span className="text-sm text-[var(--text-secondary)]">
+                                        {t("upload.anonymous")}
+                                    </span>
+                                </label>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex justify-between mt-6">
+                        <Button variant="secondary" onClick={() => setStep(2)}>
+                            ← {t("common.cancel")}
+                        </Button>
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={loading || !modpackVersion}
+                            loading={loading}
+                        >
+                            <Upload className="w-4 h-4" />
+                            {t("upload.submitButton")}
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function LoadingFallback() {
+    return (
+        <div className="max-w-3xl mx-auto px-4 py-8 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-primary)]" />
+        </div>
+    );
+}
+
+export default function UploadPage() {
+    return (
+        <Suspense fallback={<LoadingFallback />}>
+            <UploadContent />
+        </Suspense>
+    );
+}

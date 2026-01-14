@@ -1,0 +1,164 @@
+{
+  "app": {
+    "name": "Modpack Translator",
+    "subtitle": "Fluent Design"
+  },
+  "common": {
+    "next": "Next",
+    "back": "Back",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "select_all": "Select All",
+    "deselect_all": "Deselect All",
+    "select_handler": "Select Current Handler",
+    "deselect_handler": "Deselect Current Handler",
+    "refresh": "Refresh",
+    "browse": "Browse",
+    "filter": "Filter",
+    "all": "All"
+  },
+  "welcome": {
+    "title": "Welcome to Minecraft Modpack Translator!",
+    "description": "Translate modpacks or download already translated ones.",
+    "translate": {
+      "title": "Translate",
+      "description": "Automatically translate modpacks using AI",
+      "button": "Start Translation"
+    },
+    "download": {
+      "title": "Download",
+      "description": "Download translated modpack resource packs",
+      "button": "Open Website"
+    }
+  },
+  "modpack_select": {
+    "title": "Select Modpack",
+    "description": "Select an automatically detected modpack or manually specify a path.",
+    "detected_label": "Detected Modpacks:",
+    "scan_complete": "Scan Complete",
+    "scan_complete_msg": "Found {count} modpack(s).",
+    "no_modpacks": "No Modpacks",
+    "no_modpacks_msg": "No modpacks found automatically. Please select manually.",
+    "select_folder": "Select Modpack Folder"
+  },
+  "scan_result": {
+    "title": "Scan Result",
+    "settings_title": "Translation Settings",
+    "stats": {
+      "source_files": "Source Files",
+      "target_files": "Target Files",
+      "paired": "Paired Files",
+      "source_only": "To Translate"
+    },
+    "language": {
+      "source": "Source Language:",
+      "target": "Target Language:"
+    },
+    "llm": {
+      "title": "LLM Settings",
+      "provider": "Provider:",
+      "model": "Model:",
+      "temperature": "Temperature:",
+      "batch_size": "Batch Size:",
+      "max_concurrent": "Max Concurrent:",
+      "rpm": "RPM Limit:",
+      "tpm": "TPM Limit:"
+    },
+    "options": {
+      "title": "Pipeline Options",
+      "skip_glossary": "Skip Glossary:",
+      "skip_review": "Skip Review:",
+      "save_glossary": "Save Modpack Glossary:"
+    }
+  },
+  "category_select": {
+    "title": "Select Files to Translate",
+    "summary_title": "Selection Summary",
+    "stats": {
+      "selected": "Selected",
+      "total": "Total"
+    },
+    "start_translation": "Start Translation",
+    "no_selection": "No Selection",
+    "no_selection_msg": "Please select files to translate."
+  },
+  "translation_progress": {
+    "title": "Translation in Progress",
+    "stats": {
+      "title": "Translation Statistics",
+      "total": "Total Entries",
+      "completed": "Completed",
+      "failed": "Failed",
+      "success_rate": "Success Rate"
+    },
+    "log_title": "Progress Log",
+    "stop": "Stop",
+    "estimated_time": "Estimated Time Remaining:"
+  },
+  "retry": {
+    "title": "Retry",
+    "description": "Some translations failed. Would you like to retry?",
+    "retry_button": "Retry",
+    "skip_button": "Skip",
+    "failed_files": "Failed Files"
+  },
+  "review": {
+    "title": "Translation Review",
+    "description": "Review and improve translations using LLM.",
+    "start_review": "Start Review",
+    "skip_review": "Skip",
+    "reviewing": "Reviewing..."
+  },
+  "upload": {
+    "title": "Upload",
+    "description": "Upload translation results to the website.",
+    "curseforge_id": "CurseForge ID:",
+    "modpack_version": "Modpack Version:",
+    "anonymous": "Anonymous Upload",
+    "api_url": "API URL:",
+    "upload_button": "Upload",
+    "skip_button": "Skip",
+    "uploading": "Uploading...",
+    "upload_success": "Upload Successful",
+    "upload_failed": "Upload Failed"
+  },
+  "completion": {
+    "title": "Complete!",
+    "description": "Translation completed successfully.",
+    "stats": {
+      "duration": "Duration:",
+      "total_entries": "Total Entries:",
+      "translated": "Translated:",
+      "success_rate": "Success Rate:"
+    },
+    "output": {
+      "title": "Output Files",
+      "resource_pack": "Resource Pack:",
+      "open_folder": "Open Folder"
+    },
+    "review_button": "Review",
+    "upload_button": "Upload",
+    "new_translation": "Start New Translation"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": {
+      "title": "Language Settings",
+      "label": "Language:",
+      "korean": "한국어",
+      "english": "English"
+    }
+  },
+  "loading": {
+    "title": "Loading...",
+    "scanning": "Scanning modpacks...",
+    "preparing": "Preparing...",
+    "please_wait": "Please wait..."
+  },
+  "modpack_tree": {
+    "headers": {
+      "file": "File",
+      "handler": "Handler"
+    }
+  }
+}

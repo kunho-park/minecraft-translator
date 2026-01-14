@@ -1,0 +1,164 @@
+{
+    "app": {
+        "name": "모드팩 번역기",
+        "subtitle": "Fluent Design"
+    },
+    "common": {
+        "next": "다음",
+        "back": "뒤로",
+        "cancel": "취소",
+        "ok": "확인",
+        "select_all": "전체 선택",
+        "deselect_all": "전체 해제",
+        "select_handler": "현재 핸들러 전체 선택",
+        "deselect_handler": "현재 핸들러 전체 해제",
+        "refresh": "새로고침",
+        "browse": "폴더 선택",
+        "filter": "필터",
+        "all": "전체"
+    },
+    "welcome": {
+        "title": "마인크래프트 모드팩 번역기에 오신 것을 환영합니다!",
+        "description": "모드팩을 번역하거나, 이미 번역된 모드팩을 다운로드하세요.",
+        "translate": {
+            "title": "번역하기",
+            "description": "AI를 사용하여 모드팩을 자동으로 번역합니다",
+            "button": "번역 시작"
+        },
+        "download": {
+            "title": "다운로드",
+            "description": "이미 번역된 모드팩 리소스팩을 다운로드합니다",
+            "button": "웹사이트 열기"
+        }
+    },
+    "modpack_select": {
+        "title": "모드팩 선택",
+        "description": "자동으로 감지된 모드팩을 선택하거나 수동으로 경로를 지정하세요.",
+        "detected_label": "감지된 모드팩:",
+        "scan_complete": "스캔 완료",
+        "scan_complete_msg": "{count}개의 모드팩을 찾았습니다.",
+        "no_modpacks": "모드팩 없음",
+        "no_modpacks_msg": "자동으로 모드팩을 찾을 수 없습니다. 수동으로 선택해주세요.",
+        "select_folder": "모드팩 폴더 선택"
+    },
+    "scan_result": {
+        "title": "스캔 결과",
+        "settings_title": "번역 설정",
+        "stats": {
+            "source_files": "원문 파일",
+            "target_files": "번역 파일",
+            "paired": "매칭된 파일",
+            "source_only": "번역 대상"
+        },
+        "language": {
+            "source": "원문 언어:",
+            "target": "번역 언어:"
+        },
+        "llm": {
+            "title": "LLM 설정",
+            "provider": "제공자:",
+            "model": "모델:",
+            "temperature": "Temperature:",
+            "batch_size": "배치 크기:",
+            "max_concurrent": "동시 실행:",
+            "rpm": "RPM 제한:",
+            "tpm": "TPM 제한:"
+        },
+        "options": {
+            "title": "파이프라인 옵션",
+            "skip_glossary": "용어집 건너뛰기:",
+            "skip_review": "리뷰 건너뛰기:",
+            "save_glossary": "모드팩 용어집 저장:"
+        }
+    },
+    "category_select": {
+        "title": "번역할 파일 선택",
+        "summary_title": "선택 요약",
+        "stats": {
+            "selected": "선택됨",
+            "total": "전체"
+        },
+        "start_translation": "번역 시작",
+        "no_selection": "선택 없음",
+        "no_selection_msg": "번역할 파일을 선택해주세요."
+    },
+    "translation_progress": {
+        "title": "번역 진행 중",
+        "stats": {
+            "title": "번역 통계",
+            "total": "전체 항목",
+            "completed": "완료",
+            "failed": "실패",
+            "success_rate": "성공률"
+        },
+        "log_title": "진행 로그",
+        "stop": "중단",
+        "estimated_time": "예상 남은 시간:"
+    },
+    "retry": {
+        "title": "재시도",
+        "description": "실패한 번역이 있습니다. 재시도하시겠습니까?",
+        "retry_button": "재시도",
+        "skip_button": "건너뛰기",
+        "failed_files": "실패한 파일"
+    },
+    "review": {
+        "title": "번역 리뷰",
+        "description": "LLM을 사용하여 번역을 검토하고 개선합니다.",
+        "start_review": "리뷰 시작",
+        "skip_review": "건너뛰기",
+        "reviewing": "리뷰 중..."
+    },
+    "upload": {
+        "title": "업로드",
+        "description": "번역 결과를 웹사이트에 업로드합니다.",
+        "curseforge_id": "CurseForge ID:",
+        "modpack_version": "모드팩 버전:",
+        "anonymous": "익명 업로드",
+        "api_url": "API URL:",
+        "upload_button": "업로드",
+        "skip_button": "건너뛰기",
+        "uploading": "업로드 중...",
+        "upload_success": "업로드 성공",
+        "upload_failed": "업로드 실패"
+    },
+    "completion": {
+        "title": "완료!",
+        "description": "번역이 성공적으로 완료되었습니다.",
+        "stats": {
+            "duration": "소요 시간:",
+            "total_entries": "전체 항목:",
+            "translated": "번역 완료:",
+            "success_rate": "성공률:"
+        },
+        "output": {
+            "title": "출력 파일",
+            "resource_pack": "리소스팩:",
+            "open_folder": "폴더 열기"
+        },
+        "review_button": "리뷰",
+        "upload_button": "업로드",
+        "new_translation": "새 번역 시작"
+    },
+    "settings": {
+        "title": "설정",
+        "language": {
+            "title": "언어 설정",
+            "label": "언어:",
+            "korean": "한국어",
+            "english": "English"
+        }
+    },
+    "loading": {
+        "title": "로딩 중...",
+        "scanning": "모드팩 스캔 중...",
+        "preparing": "작업을 준비 중입니다...",
+        "please_wait": "잠시만 기다려주세요..."
+    },
+    "modpack_tree": {
+        "headers": {
+            "file": "파일",
+            "handler": "핸들러"
+        }
+    }
+}

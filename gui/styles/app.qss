@@ -1,0 +1,75 @@
+/* Fluent Design Custom Styles */
+
+/* Card styling */
+CardWidget {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+/* Progress bar */
+ProgressBar {
+    border-radius: 6px;
+}
+
+/* Tree widget */
+QTreeWidget {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background-color: transparent;
+}
+
+QTreeWidget::item {
+    padding: 5px;
+}
+
+QTreeWidget::item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+QTreeWidget::item:selected {
+    background-color: rgba(0, 120, 212, 0.3);
+}
+
+/* List widget */
+QListWidget {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background-color: transparent;
+}
+
+QListWidget::item {
+    padding: 8px;
+}
+
+QListWidget::item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+QListWidget::item:selected {
+    background-color: rgba(0, 120, 212, 0.3);
+}
+
+/* Text edit */
+QTextEdit {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 10px;
+}
+
+/* Scroll area */
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+
+/* Subtitle labels */
+SubtitleLabel {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+/* Body labels */
+BodyLabel {
+    font-size: 14px;
+}

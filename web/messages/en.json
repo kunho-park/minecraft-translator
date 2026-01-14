@@ -1,0 +1,241 @@
+{
+    "common": {
+        "siteName": "Modpack Translations",
+        "siteDescription": "Share Minecraft modpack translations",
+        "search": "Search",
+        "searchPlaceholder": "Search modpacks...",
+        "loading": "Loading...",
+        "error": "An error occurred",
+        "retry": "Retry",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "submit": "Submit",
+        "download": "Download",
+        "upload": "Upload",
+        "login": "Login",
+        "logout": "Logout",
+        "profile": "Profile",
+        "settings": "Settings",
+        "admin": "Admin",
+        "yes": "Yes",
+        "no": "No",
+        "refresh": "Refresh"
+    },
+    "nav": {
+        "home": "Home",
+        "modpacks": "Modpacks",
+        "upload": "Upload",
+        "myUploads": "My Uploads",
+        "admin": "Admin",
+        "loginWithDiscord": "Login with Discord"
+    },
+    "home": {
+        "hero": {
+            "title": "Minecraft Modpack Translations",
+            "subtitle": "Discover high-quality translations made by the community",
+            "searchPlaceholder": "Search by modpack name..."
+        },
+        "sections": {
+            "latest": "Latest Translations",
+            "popular": "Popular Translations",
+            "viewAll": "View All"
+        }
+    },
+    "modpacks": {
+        "title": "Translated Modpacks",
+        "noResults": "No results found",
+        "filters": {
+            "language": "Language",
+            "version": "Version",
+            "sortBy": "Sort by",
+            "latest": "Latest",
+            "downloads": "Downloads",
+            "rating": "Rating",
+            "tags": "Tags",
+            "selectTags": "Select Tags",
+            "clearAll": "Clear All"
+        },
+        "card": {
+            "downloads": "downloads",
+            "translations": "translations",
+            "categories": "categories"
+        }
+    },
+    "modpack": {
+        "translations": "Translations",
+        "noTranslations": "No translations yet",
+        "uploadTranslation": "Upload Translation",
+        "info": {
+            "author": "Author",
+            "version": "Version",
+            "downloads": "Downloads",
+            "gameVersions": "Game Versions"
+        }
+    },
+    "translation": {
+        "version": "Modpack Version",
+        "files": {
+            "resourcePack": "Resource Pack",
+            "overrideFile": "Override File"
+        },
+        "metadata": {
+            "title": "Translation Info",
+            "translationType": "Translation Method",
+            "aiTranslation": "AI Translation",
+            "manualTranslation": "Manual Translation",
+            "model": "LLM Model",
+            "temperature": "Temperature",
+            "batchSize": "Batch Size",
+            "usedGlossary": "Used Glossary",
+            "reviewed": "Reviewed",
+            "sourceLang": "Source Language",
+            "targetLang": "Target Language"
+        },
+        "stats": {
+            "title": "Translation Stats",
+            "fileCount": "Files",
+            "totalEntries": "Total Entries",
+            "translatedEntries": "Translated",
+            "translationRate": "Rate",
+            "inputTokens": "Input Tokens",
+            "outputTokens": "Output Tokens",
+            "totalTokens": "Total Tokens",
+            "duration": "Duration",
+            "durationFormat": "{minutes}m {seconds}s",
+            "handlerStats": "Handler Stats"
+        },
+        "status": {
+            "pending": "Pending Review",
+            "approved": "Approved",
+            "rejected": "Rejected"
+        }
+    },
+    "upload": {
+        "title": "Upload Translation",
+        "steps": {
+            "modpack": "Select Modpack",
+            "files": "Upload Files",
+            "metadata": "Translation Info",
+            "review": "Review"
+        },
+        "modpack": {
+            "searchLabel": "CurseForge ID or URL",
+            "searchPlaceholder": "Enter modpack ID...",
+            "searchButton": "Search",
+            "notFound": "Modpack not found",
+            "confirm": "Is this the correct modpack?"
+        },
+        "files": {
+            "resourcePack": "Resource Pack (ZIP)",
+            "overrideFile": "Override File (ZIP, optional)",
+            "dropzone": "Drag files here or click to browse",
+            "maxSize": "Max file size: 50MB"
+        },
+        "metadata": {
+            "version": "Modpack Version",
+            "versionPlaceholder": "e.g., 1.20.1-2.0.0",
+            "sourceLang": "Source Language",
+            "targetLang": "Target Language",
+            "translationType": "Translation Method",
+            "aiTranslation": "AI Translation",
+            "aiTranslationDesc": "Automatic translation using LLM",
+            "manualTranslation": "Manual Translation",
+            "manualTranslationDesc": "Manually translated files",
+            "model": "LLM Model Used",
+            "modelPlaceholder": "e.g., gpt-4, claude-3",
+            "temperature": "Temperature (0-2)",
+            "batchSize": "Batch Size",
+            "usedGlossary": "Used Glossary",
+            "reviewed": "Translation Reviewed"
+        },
+        "success": {
+            "title": "Upload Complete!",
+            "message": "Your translation has been uploaded successfully. It will be public after admin review."
+        },
+        "anonymous": "Upload anonymously",
+        "submitButton": "Upload"
+    },
+    "review": {
+        "title": "Reviews",
+        "noReviews": "No reviews yet",
+        "writeReview": "Write Review",
+        "works": {
+            "label": "Does it work?",
+            "yes": "Works",
+            "no": "Doesn't work"
+        },
+        "rating": "Rating",
+        "comment": "Comment",
+        "commentPlaceholder": "Share your thoughts about this translation...",
+        "submit": "Submit Review",
+        "success": "Review submitted successfully!",
+        "anonymous": "Anonymous",
+        "anonymousLabel": "Anonymous review",
+        "anonymousNotice": {
+            "title": "Writing as anonymous",
+            "description": "You can write a review without logging in. Anonymous users can submit one review per translation every 24 hours."
+        },
+        "errors": {
+            "required": "Please select whether it works and a rating",
+            "rateLimit": "You have already reviewed this translation. Anonymous reviews are limited to once per 24 hours.",
+            "failed": "Failed to submit review"
+        }
+    },
+    "admin": {
+        "title": "Admin Panel",
+        "pendingReviews": "Pending",
+        "allTranslations": "All Translations",
+        "noPending": "No pending translations",
+        "noTranslations": "No translations found",
+        "actions": {
+            "approve": "Approve",
+            "reject": "Reject",
+            "edit": "Edit",
+            "delete": "Delete",
+            "view": "View Details"
+        },
+        "confirmApprove": "Are you sure you want to approve this translation?",
+        "confirmReject": "Are you sure you want to reject this translation?",
+        "confirmDelete": "Are you sure you want to delete this translation? This action cannot be undone."
+    },
+    "auth": {
+        "signIn": "Sign In",
+        "signOut": "Sign Out",
+        "signInWith": "Sign in with {provider}",
+        "signInDescription": "Sign in with your Discord account to upload translations and write reviews."
+    },
+    "myUploads": {
+        "title": "My Uploads",
+        "description": "Check the status of your uploaded translations",
+        "loginRequired": "Login Required",
+        "loginDescription": "Please sign in to view your upload status.",
+        "statusLegend": "Status Guide",
+        "uploadedAt": "Uploaded",
+        "viewPage": "View Page",
+        "versions": "Versions",
+        "noUploads": "You haven't uploaded any translations yet",
+        "uploadFirst": "Upload Your First Translation"
+    },
+    "languages": {
+        "en_us": "English",
+        "ko_kr": "Korean",
+        "ja_jp": "Japanese",
+        "zh_cn": "Chinese (Simplified)",
+        "zh_tw": "Chinese (Traditional)"
+    },
+    "footer": {
+        "description": "A community for sharing Minecraft modpack translations",
+        "links": {
+            "github": "GitHub",
+            "discord": "Discord"
+        },
+        "copyright": "© 2026 2odk. All rights reserved."
+    },
+    "discordBanner": {
+        "message": "Join our Discord server to get translation updates and connect with the community!",
+        "join": "Join Discord",
+        "dismiss": "Dismiss"
+    }
+}

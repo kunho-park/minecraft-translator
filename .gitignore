@@ -1,0 +1,91 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# PyInstaller
+build/
+dist/
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite3
+dev.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Output
+test/output/
+uploads/
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+
+# Web specific
+web/node_modules/
+web/.next/
+web/out/
+web/.turbo/
+web/uploads/*
+!web/uploads/.gitkeep
+web/dev.db
+web/data/
+web/scripts/
+web/scripts/.*
+
+# Docker
+.dockerignore
+
+DEPLOYMENT.md
+RELEASE_GUIDE.md 
+tools/migrate_old_data.py
+tools/MIGRATION_GUIDE.md

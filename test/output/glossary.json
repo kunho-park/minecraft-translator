@@ -1,0 +1,493 @@
+{
+  "version": "1.0",
+  "locale_source": "en_us",
+  "locale_target": "ko_kr",
+  "created_at": "2026-01-14T19:40:05.896624",
+  "updated_at": "2026-01-14T19:40:05.896636",
+  "term_rules": [
+    {
+      "term_ko": "다이아몬드",
+      "preferred_style": "transliteration",
+      "aliases": [
+        "Diamond"
+      ],
+      "category": "item",
+      "notes": "Material name transliterated."
+    },
+    {
+      "term_ko": "다이아몬드 검",
+      "preferred_style": "transliteration + Korean word",
+      "aliases": [
+        "Diamond Sword"
+      ],
+      "category": "item",
+      "notes": "Material transliteration + item type translation."
+    },
+    {
+      "term_ko": "다이아몬드 곡괭이",
+      "preferred_style": "transliteration + Korean word",
+      "aliases": [
+        "Diamond Pickaxe"
+      ],
+      "category": "item",
+      "notes": "Material transliteration + item type translation."
+    },
+    {
+      "term_ko": "네더라이트 주괴",
+      "preferred_style": "transliteration + Korean word",
+      "aliases": [
+        "Netherite Ingot"
+      ],
+      "category": "item",
+      "notes": "Material transliteration + item type translation."
+    },
+    {
+      "term_ko": "네더라이트 검",
+      "preferred_style": "transliteration + Korean word",
+      "aliases": [
+        "Netherite Sword"
+      ],
+      "category": "item",
+      "notes": "Material transliteration + item type translation."
+    },
+    {
+      "term_ko": "엔더 진주",
+      "preferred_style": "transliteration + Korean word",
+      "aliases": [
+        "Ender Pearl"
+      ],
+      "category": "item",
+      "notes": "Proper noun transliteration + item type translation."
+    },
+    {
+      "term_ko": "황금 사과",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Golden Apple"
+      ],
+      "category": "item",
+      "notes": "Both material and item type translated."
+    },
+    {
+      "term_ko": "철 주괴",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Iron Ingot"
+      ],
+      "category": "item",
+      "notes": "Both material and item type translated."
+    },
+    {
+      "term_ko": "금 주괴",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Gold Ingot"
+      ],
+      "category": "item",
+      "notes": "Both material and item type translated."
+    },
+    {
+      "term_ko": "레드스톤",
+      "preferred_style": "transliteration",
+      "aliases": [
+        "Redstone"
+      ],
+      "category": "item",
+      "notes": "Material name transliterated."
+    },
+    {
+      "term_ko": "에메랄드",
+      "preferred_style": "transliteration",
+      "aliases": [
+        "Emerald"
+      ],
+      "category": "item",
+      "notes": "Material name transliterated."
+    },
+    {
+      "term_ko": "돌",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Stone"
+      ],
+      "category": "block",
+      "notes": "Block name translated."
+    },
+    {
+      "term_ko": "화강암",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Granite"
+      ],
+      "category": "block",
+      "notes": "Block name translated."
+    },
+    {
+      "term_ko": "섬록암",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Diorite"
+      ],
+      "category": "block",
+      "notes": "Block name translated."
+    },
+    {
+      "term_ko": "안산암",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Andesite"
+      ],
+      "category": "block",
+      "notes": "Block name translated."
+    },
+    {
+      "term_ko": "심층암",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Deepslate"
+      ],
+      "category": "block",
+      "notes": "Block name translated."
+    },
+    {
+      "term_ko": "네더랙",
+      "preferred_style": "transliteration",
+      "aliases": [
+        "Netherrack"
+      ],
+      "category": "block",
+      "notes": "Block name transliterated."
+    },
+    {
+      "term_ko": "엔드 돌",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "End Stone"
+      ],
+      "category": "block",
+      "notes": "Block name translated."
+    },
+    {
+      "term_ko": "흑요석",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Obsidian"
+      ],
+      "category": "block",
+      "notes": "Block name translated."
+    },
+    {
+      "term_ko": "마법 부여대",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Enchanting Table"
+      ],
+      "category": "ui",
+      "notes": "UI element translated."
+    },
+    {
+      "term_ko": "제작대",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Crafting Table"
+      ],
+      "category": "ui",
+      "notes": "UI element translated."
+    },
+    {
+      "term_ko": "좀비",
+      "preferred_style": "transliteration",
+      "aliases": [
+        "Zombie"
+      ],
+      "category": "entity",
+      "notes": "Entity name transliterated."
+    },
+    {
+      "term_ko": "스켈레톤",
+      "preferred_style": "transliteration",
+      "aliases": [
+        "Skeleton"
+      ],
+      "category": "entity",
+      "notes": "Entity name transliterated."
+    },
+    {
+      "term_ko": "크리퍼",
+      "preferred_style": "transliteration",
+      "aliases": [
+        "Creeper"
+      ],
+      "category": "entity",
+      "notes": "Entity name transliterated."
+    },
+    {
+      "term_ko": "거미",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Spider"
+      ],
+      "category": "entity",
+      "notes": "Entity name translated."
+    },
+    {
+      "term_ko": "엔더맨",
+      "preferred_style": "transliteration",
+      "aliases": [
+        "Enderman"
+      ],
+      "category": "entity",
+      "notes": "Entity name transliterated."
+    },
+    {
+      "term_ko": "엔더 드래곤",
+      "preferred_style": "transliteration",
+      "aliases": [
+        "Ender Dragon"
+      ],
+      "category": "entity",
+      "notes": "Proper noun transliterated."
+    },
+    {
+      "term_ko": "완료",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Done"
+      ],
+      "category": "ui",
+      "notes": "UI word translated."
+    },
+    {
+      "term_ko": "취소",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Cancel"
+      ],
+      "category": "ui",
+      "notes": "UI word translated."
+    },
+    {
+      "term_ko": "뒤로",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Back"
+      ],
+      "category": "ui",
+      "notes": "UI word translated."
+    },
+    {
+      "term_ko": "예",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Yes"
+      ],
+      "category": "ui",
+      "notes": "UI word translated."
+    },
+    {
+      "term_ko": "아니오",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "No"
+      ],
+      "category": "ui",
+      "notes": "UI word translated."
+    },
+    {
+      "term_ko": "싱글플레이",
+      "preferred_style": "transliteration",
+      "aliases": [
+        "Singleplayer"
+      ],
+      "category": "ui",
+      "notes": "Proper noun transliterated."
+    },
+    {
+      "term_ko": "멀티플레이",
+      "preferred_style": "transliteration",
+      "aliases": [
+        "Multiplayer"
+      ],
+      "category": "ui",
+      "notes": "Proper noun transliterated."
+    },
+    {
+      "term_ko": "설정...",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Options..."
+      ],
+      "category": "ui",
+      "notes": "UI word translated; ellipsis preserved."
+    },
+    {
+      "term_ko": "게임 종료",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Quit Game"
+      ],
+      "category": "ui",
+      "notes": "UI phrase translated."
+    },
+    {
+      "term_ko": "날카로움",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Sharpness"
+      ],
+      "category": "effect",
+      "notes": "Effect name translated."
+    },
+    {
+      "term_ko": "강타",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Smite"
+      ],
+      "category": "effect",
+      "notes": "Effect name translated."
+    },
+    {
+      "term_ko": "발화",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Fire Aspect"
+      ],
+      "category": "effect",
+      "notes": "Effect name translated."
+    },
+    {
+      "term_ko": "내구성",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Unbreaking"
+      ],
+      "category": "effect",
+      "notes": "Effect name translated."
+    },
+    {
+      "term_ko": "수선",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Mending"
+      ],
+      "category": "effect",
+      "notes": "Effect name translated."
+    },
+    {
+      "term_ko": "효율",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Efficiency"
+      ],
+      "category": "effect",
+      "notes": "Effect name translated."
+    },
+    {
+      "term_ko": "행운",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Fortune"
+      ],
+      "category": "effect",
+      "notes": "Effect name translated."
+    },
+    {
+      "term_ko": "섬세한 손길",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "Silk Touch"
+      ],
+      "category": "effect",
+      "notes": "Effect name translated."
+    },
+    {
+      "term_ko": "마인크래프트",
+      "preferred_style": "transliteration",
+      "aliases": [
+        "Minecraft"
+      ],
+      "category": "other",
+      "notes": "Game title transliterated."
+    },
+    {
+      "term_ko": "게임의 심장이자 이야기",
+      "preferred_style": "Korean translation",
+      "aliases": [
+        "The heart and story of the game"
+      ],
+      "category": "other",
+      "notes": "Descriptive phrase translated."
+    }
+  ],
+  "proper_noun_rules": [
+    {
+      "source_like": "Nether",
+      "preferred_ko": "네더",
+      "notes": "Proper noun transliteration."
+    },
+    {
+      "source_like": "Ender",
+      "preferred_ko": "엔더",
+      "notes": "Proper noun transliteration."
+    },
+    {
+      "source_like": "End",
+      "preferred_ko": "엔드",
+      "notes": "Proper noun transliteration."
+    },
+    {
+      "source_like": "Netherite",
+      "preferred_ko": "네더라이트",
+      "notes": "Proper noun transliteration."
+    },
+    {
+      "source_like": "Netherrack",
+      "preferred_ko": "네더랙",
+      "notes": "Proper noun transliteration."
+    }
+  ],
+  "formatting_rules": [
+    {
+      "rule_name": "Placeholder Particle Usage",
+      "description": "When a placeholder (%1$s, %2$s, etc.) represents a noun, attach the appropriate Korean subject particle ‘이(가)’ after it. For a second placeholder that is a target, attach ‘에게’. No particles are used for UI strings.",
+      "examples": [
+        "%1$s이(가) 마법에 의해 죽었습니다",
+        "%1$s이(가) %2$s에게 죽었습니다"
+      ]
+    },
+    {
+      "rule_name": "Ellipsis Preservation",
+      "description": "Ellipsis ‘…’ should be preserved after Korean translations of UI strings.",
+      "examples": [
+        "설정..."
+      ]
+    },
+    {
+      "rule_name": "Transliteration vs Translation",
+      "description": "Proper nouns and materials are transliterated (e.g., ‘네더’, ‘레드스톤’), while item types, UI words, and effects are translated into Korean.",
+      "examples": [
+        "네더라이트 주괴",
+        "마법 부여대",
+        "날카로움"
+      ]
+    },
+    {
+      "rule_name": "Spacing Between Transliteration and Korean Words",
+      "description": "When combining transliterated proper nouns with Korean words, use a space between them (e.g., ‘엔더 드래곤’).",
+      "examples": [
+        "엔더 드래곤",
+        "엔더 진주"
+      ]
+    },
+    {
+      "rule_name": "Capitalization and Particle Placement",
+      "description": "Korean translations are written in lower‑case unless they are part of a proper noun. Use ‘이(가)’ after placeholders and ‘에게’ after the second placeholder; UI words receive no particles.",
+      "examples": [
+        "완료",
+        "게임 종료",
+        "%1$s이(가) 마법에 의해 죽었습니다"
+      ]
+    }
+  ]
+}

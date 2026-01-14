@@ -1,0 +1,241 @@
+{
+    "common": {
+        "siteName": "모드팩 번역소",
+        "siteDescription": "마인크래프트 모드팩 번역을 공유하는 곳",
+        "search": "검색",
+        "searchPlaceholder": "모드팩 검색...",
+        "loading": "로딩 중...",
+        "error": "오류가 발생했습니다",
+        "retry": "다시 시도",
+        "save": "저장",
+        "cancel": "취소",
+        "delete": "삭제",
+        "edit": "수정",
+        "submit": "제출",
+        "download": "다운로드",
+        "upload": "업로드",
+        "login": "로그인",
+        "logout": "로그아웃",
+        "profile": "프로필",
+        "settings": "설정",
+        "admin": "관리자",
+        "yes": "예",
+        "no": "아니오",
+        "refresh": "새로고침"
+    },
+    "nav": {
+        "home": "홈",
+        "modpacks": "모드팩",
+        "upload": "업로드",
+        "myUploads": "내 업로드",
+        "admin": "관리",
+        "loginWithDiscord": "Discord로 로그인"
+    },
+    "home": {
+        "hero": {
+            "title": "마인크래프트 모드팩 번역",
+            "subtitle": "커뮤니티가 만든 고품질 번역을 찾아보세요",
+            "searchPlaceholder": "모드팩 이름으로 검색..."
+        },
+        "sections": {
+            "latest": "최신 번역",
+            "popular": "인기 번역",
+            "viewAll": "전체 보기"
+        }
+    },
+    "modpacks": {
+        "title": "번역된 모드팩",
+        "noResults": "검색 결과가 없습니다",
+        "filters": {
+            "language": "언어",
+            "version": "버전",
+            "sortBy": "정렬",
+            "latest": "최신순",
+            "downloads": "다운로드순",
+            "rating": "평점순",
+            "tags": "태그",
+            "selectTags": "태그 선택",
+            "clearAll": "전체 해제"
+        },
+        "card": {
+            "downloads": "다운로드",
+            "translations": "번역",
+            "categories": "카테고리"
+        }
+    },
+    "modpack": {
+        "translations": "번역 목록",
+        "noTranslations": "아직 번역이 없습니다",
+        "uploadTranslation": "번역 업로드",
+        "info": {
+            "author": "제작자",
+            "version": "버전",
+            "downloads": "다운로드 수",
+            "gameVersions": "지원 버전"
+        }
+    },
+    "translation": {
+        "version": "모드팩 버전",
+        "files": {
+            "resourcePack": "리소스팩",
+            "overrideFile": "덮어쓰기 파일"
+        },
+        "metadata": {
+            "title": "번역 정보",
+            "translationType": "번역 방식",
+            "aiTranslation": "AI 번역",
+            "manualTranslation": "수동 번역",
+            "model": "사용 모델",
+            "temperature": "Temperature",
+            "batchSize": "배치 크기",
+            "usedGlossary": "사전 사용",
+            "reviewed": "검수 완료",
+            "sourceLang": "원본 언어",
+            "targetLang": "번역 언어"
+        },
+        "stats": {
+            "title": "번역 통계",
+            "fileCount": "파일 수",
+            "totalEntries": "전체 항목",
+            "translatedEntries": "번역된 항목",
+            "translationRate": "번역률",
+            "inputTokens": "입력 토큰",
+            "outputTokens": "출력 토큰",
+            "totalTokens": "총 토큰",
+            "duration": "소요 시간",
+            "durationFormat": "{minutes}분 {seconds}초",
+            "handlerStats": "핸들러별 통계"
+        },
+        "status": {
+            "pending": "검수 대기",
+            "approved": "승인됨",
+            "rejected": "거절됨"
+        }
+    },
+    "upload": {
+        "title": "번역 업로드",
+        "steps": {
+            "modpack": "모드팩 선택",
+            "files": "파일 업로드",
+            "metadata": "번역 정보",
+            "review": "확인"
+        },
+        "modpack": {
+            "searchLabel": "CurseForge ID 또는 URL",
+            "searchPlaceholder": "모드팩 ID 입력...",
+            "searchButton": "검색",
+            "notFound": "모드팩을 찾을 수 없습니다",
+            "confirm": "이 모드팩이 맞나요?"
+        },
+        "files": {
+            "resourcePack": "리소스팩 (ZIP)",
+            "overrideFile": "덮어쓰기 파일 (ZIP, 선택사항)",
+            "dropzone": "파일을 여기에 드래그하거나 클릭하세요",
+            "maxSize": "최대 파일 크기: 50MB"
+        },
+        "metadata": {
+            "version": "모드팩 버전",
+            "versionPlaceholder": "예: 1.20.1-2.0.0",
+            "sourceLang": "원본 언어",
+            "targetLang": "번역 언어",
+            "translationType": "번역 방식",
+            "aiTranslation": "AI 번역",
+            "aiTranslationDesc": "LLM을 사용한 자동 번역",
+            "manualTranslation": "수동 번역",
+            "manualTranslationDesc": "직접 번역한 파일",
+            "model": "사용한 LLM 모델",
+            "modelPlaceholder": "예: gpt-4, claude-3",
+            "temperature": "Temperature (0-2)",
+            "batchSize": "배치 크기",
+            "usedGlossary": "용어 사전 사용",
+            "reviewed": "번역 검수 완료"
+        },
+        "success": {
+            "title": "업로드 완료!",
+            "message": "번역이 성공적으로 업로드되었습니다. 관리자 검수 후 공개됩니다."
+        },
+        "anonymous": "익명으로 업로드",
+        "submitButton": "업로드"
+    },
+    "review": {
+        "title": "리뷰",
+        "noReviews": "아직 리뷰가 없습니다",
+        "writeReview": "리뷰 작성",
+        "works": {
+            "label": "작동 여부",
+            "yes": "작동함",
+            "no": "작동 안함"
+        },
+        "rating": "평점",
+        "comment": "코멘트",
+        "commentPlaceholder": "번역에 대한 의견을 남겨주세요...",
+        "submit": "리뷰 등록",
+        "success": "리뷰가 등록되었습니다!",
+        "anonymous": "익명",
+        "anonymousLabel": "익명 리뷰",
+        "anonymousNotice": {
+            "title": "익명으로 리뷰 작성",
+            "description": "로그인 없이 리뷰를 작성할 수 있습니다. 동일 번역에 대해 24시간마다 1회 작성 가능합니다."
+        },
+        "errors": {
+            "required": "작동 여부와 평점을 선택해주세요",
+            "rateLimit": "이미 이 번역에 리뷰를 작성했습니다. 익명 리뷰는 24시간마다 1회만 가능합니다.",
+            "failed": "리뷰 등록에 실패했습니다"
+        }
+    },
+    "admin": {
+        "title": "관리자 페이지",
+        "pendingReviews": "검수 대기",
+        "allTranslations": "전체 번역",
+        "noPending": "검수 대기 중인 번역이 없습니다",
+        "noTranslations": "등록된 번역이 없습니다",
+        "actions": {
+            "approve": "승인",
+            "reject": "거절",
+            "edit": "수정",
+            "delete": "삭제",
+            "view": "상세 보기"
+        },
+        "confirmApprove": "이 번역을 승인하시겠습니까?",
+        "confirmReject": "이 번역을 거절하시겠습니까?",
+        "confirmDelete": "이 번역을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+    },
+    "auth": {
+        "signIn": "로그인",
+        "signOut": "로그아웃",
+        "signInWith": "{provider}로 로그인",
+        "signInDescription": "Discord 계정으로 로그인하여 번역을 업로드하고 리뷰를 작성하세요."
+    },
+    "myUploads": {
+        "title": "내 업로드",
+        "description": "내가 업로드한 번역의 상태를 확인하세요",
+        "loginRequired": "로그인이 필요합니다",
+        "loginDescription": "업로드 현황을 확인하려면 로그인해주세요.",
+        "statusLegend": "상태 안내",
+        "uploadedAt": "업로드",
+        "viewPage": "페이지 보기",
+        "versions": "버전 목록",
+        "noUploads": "아직 업로드한 번역이 없습니다",
+        "uploadFirst": "첫 번역 업로드하기"
+    },
+    "languages": {
+        "en_us": "영어",
+        "ko_kr": "한국어",
+        "ja_jp": "일본어",
+        "zh_cn": "중국어 (간체)",
+        "zh_tw": "중국어 (번체)"
+    },
+    "footer": {
+        "description": "마인크래프트 모드팩 번역을 공유하는 커뮤니티",
+        "links": {
+            "github": "GitHub",
+            "discord": "Discord"
+        },
+        "copyright": "© 2026 2odk. All rights reserved."
+    },
+    "discordBanner": {
+        "message": "Discord 서버에 가입하여 번역 업데이트 소식을 받고 커뮤니티와 소통하세요!",
+        "join": "Discord 가입하기",
+        "dismiss": "닫기"
+    }
+}

@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String            @id @default(uuid())
+  discordId        String            @unique
+  name             String
+  avatar           String?
+  isAdmin          Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  reviews          Review[]
+  translationPacks TranslationPack[]
+}
+
+model Modpack {
+  id               Int               @id @default(autoincrement())
+  curseforgeId     Int               @unique
+  name             String
+  slug             String
+  summary          String
+  logoUrl          String?
+  author           String?
+  gameVersions     String?
+  categories       String?
+  totalDownloads   Int               @default(0)
+  cachedAt         DateTime          @default(now())
+  translationPacks TranslationPack[]
+}
+
+model TranslationPack {
+  id                  String   @id @default(uuid())
+  modpackId           Int
+  modpackVersion      String
+  userId              String?
+  sourceLang          String   @default("en_us")
+  targetLang          String   @default("ko_kr")
+  status              String   @default("pending")
+  resourcePackPath    String?
+  overrideFilePath    String?
+  isManualTranslation Boolean  @default(false)
+  llmModel            String?
+  temperature         Float?
+  batchSize           Int?
+  usedGlossary        Boolean  @default(false)
+  reviewed            Boolean  @default(false)
+  downloadCount       Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  durationSeconds     Float?
+  fileCount           Int?
+  handlerStats        String?
+  inputTokens         Int?
+  outputTokens        Int?
+  totalEntries        Int?
+  totalTokens         Int?
+  translatedEntries   Int?
+  reviews             Review[]
+  user                User?    @relation(fields: [userId], references: [id])
+  modpack             Modpack  @relation(fields: [modpackId], references: [id], onDelete: Cascade)
+
+  @@index([modpackId])
+  @@index([modpackVersion])
+  @@index([status])
+  @@index([modpackId, modpackVersion])
+}
+
+model Review {
+  id          String          @id @default(uuid())
+  packId      String
+  userId      String?
+  works       Boolean
+  rating      Int
+  comment     String?
+  ipAddress   String?
+  isAnonymous Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  user        User?           @relation(fields: [userId], references: [id])
+  pack        TranslationPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+
+  @@index([packId])
+  @@index([ipAddress])
+}
