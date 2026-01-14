@@ -46,6 +46,9 @@ htmlcov/
 # PyInstaller
 build/
 dist/
+gitbook/
+
+gitbook/*
 
 # Logs
 *.log
