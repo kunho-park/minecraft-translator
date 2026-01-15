@@ -522,24 +522,41 @@ class ModpackScanner:
         self, file_path: Path, tf: TranslationFile
     ) -> tuple[str, str]:
         """Extract namespace and mod ID from a file path."""
-        # For mods, use jar name
-        if tf.file_type == "mod" and tf.jar_name:
-            mod_name = Path(tf.jar_name).stem.split("-")[0]
-            return mod_name, mod_name
-
         parts = file_path.parts
+        mod_name = None
 
-        # Look for 'assets' directory
+        # Try to extract clean mod name from jar if available
+        if tf.file_type == "mod" and tf.jar_name:
+            mod_name = self._clean_mod_name(tf.jar_name)
+
+        # Look for 'assets' directory first (most reliable for resource packs)
         try:
             assets_idx = parts.index("assets")
             if assets_idx + 1 < len(parts):
                 namespace = parts[assets_idx + 1]
-                return namespace, namespace
+                # If we have a mod name, use it as mod_id, otherwise use namespace
+                return namespace, (mod_name if mod_name else namespace)
         except ValueError:
             pass
 
+        # If no assets directory, but we have a mod name, use it
+        if mod_name:
+            return mod_name, mod_name
+
         # Fallback: use file type as namespace
         return tf.file_type, tf.file_type
+
+    def _clean_mod_name(self, jar_name: str) -> str:
+        """Extract clean mod name from jar filename."""
+        name = Path(jar_name).stem
+
+        # Simple regex to strip version numbers and loaders
+        # Matches - or _ followed by (forge, fabric, quilt, neoforge, mc, v digit, or digit)
+        # and everything after
+        pattern = r"[-_](?:forge|fabric|quilt|neoforge|mc|v?\d).*"
+        clean_name = re.sub(pattern, "", name, flags=re.IGNORECASE)
+
+        return clean_name
 
 
 def scan_modpack(
