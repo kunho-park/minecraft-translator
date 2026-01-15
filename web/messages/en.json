@@ -29,6 +29,7 @@
         "upload": "Upload",
         "myUploads": "My Uploads",
         "admin": "Admin",
+        "directTranslate": "Direct Translate",
         "loginWithDiscord": "Login with Discord"
     },
     "home": {
@@ -72,6 +73,12 @@
             "version": "Version",
             "downloads": "Downloads",
             "gameVersions": "Game Versions"
+        },
+        "downloadPopup": {
+            "title": "Review Request",
+            "message": "Download complete. Would you like to leave a review after checking if it works properly?",
+            "action": "Go to Review",
+            "dismiss": "Later"
         }
     },
     "translation": {
@@ -160,7 +167,7 @@
     "review": {
         "title": "Reviews",
         "noReviews": "No reviews yet",
-        "writeReview": "Write Review",
+        "writeReview": "Review",
         "works": {
             "label": "Does it work?",
             "yes": "Works",

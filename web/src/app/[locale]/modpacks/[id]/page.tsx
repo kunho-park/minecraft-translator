@@ -7,13 +7,12 @@ import Image from "next/image";
 // Force dynamic rendering (no static generation)
 export const dynamic = "force-dynamic";
 
+import TranslationDownloadActions from "@/components/TranslationDownloadActions";
 import {
   Download,
   ExternalLink,
   User,
   Calendar,
-  FileArchive,
-  FolderCog,
   Check,
   X,
   MessageSquare,
@@ -364,28 +363,12 @@ export default async function ModpackDetailPage({
                         </div>
 
                         {/* Download buttons */}
-                        <div className="flex gap-2">
-                          {pack.resourcePackPath && (
-                            <a
-                              href={`/api/translations/${pack.id}/download?type=resourcepack`}
-                            >
-                              <Button size="sm" variant="secondary">
-                                <FileArchive className="w-4 h-4" />
-                                {t("translation.files.resourcePack")}
-                              </Button>
-                            </a>
-                          )}
-                          {pack.overrideFilePath && (
-                            <a
-                              href={`/api/translations/${pack.id}/download?type=override`}
-                            >
-                              <Button size="sm" variant="secondary">
-                                <FolderCog className="w-4 h-4" />
-                                {t("translation.files.overrideFile")}
-                              </Button>
-                            </a>
-                          )}
-                        </div>
+                        <TranslationDownloadActions
+                          packId={pack.id}
+                          modpackId={modpack.id}
+                          hasResourcePack={!!pack.resourcePackPath}
+                          hasOverride={!!pack.overrideFilePath}
+                        />
                       </div>
                     </div>
                   </div>

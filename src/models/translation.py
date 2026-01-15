@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -311,6 +314,13 @@ class TranslationTask(BaseModel):
             would_exceed_entries = len(current_batch) >= max_entries
 
             if would_exceed_chars or would_exceed_entries:
+                if max_chars:
+                    logger.info(
+                        f"Batch cut due to limit. Current: {len(current_batch)} items, {current_chars} chars. "
+                        f"Next item '{entry.key}' size: {entry_chars}. "
+                        f"Limit: {max_entries} items, {max_chars} chars."
+                    )
+                
                 # Flush current batch
                 if current_batch:
                     batches.append(

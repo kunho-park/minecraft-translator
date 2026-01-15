@@ -16,6 +16,7 @@ import {
   Globe,
   ChevronDown,
   FileCheck,
+  Github,
 } from "lucide-react";
 import { locales, localeNames, type Locale } from "@/i18n/config";
 import { useRouter as useNextRouter } from "next/navigation";
@@ -50,6 +51,12 @@ export default function Navbar() {
     { href: "/", label: t("nav.home"), icon: Home },
     { href: "/modpacks", label: t("nav.modpacks"), icon: Package },
     { href: "/upload", label: t("nav.upload"), icon: Upload },
+    { 
+      href: "https://github.com/kunho-park/minecraft-translator", 
+      label: t("nav.directTranslate"), 
+      icon: Github, 
+      external: true 
+    },
   ];
 
   const isActive = (href: string) => {
@@ -88,19 +95,40 @@ export default function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive(item.href)
+            {navItems.map((item) => {
+              const isExternal = "external" in item;
+              const commonClasses = `flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                !isExternal && isActive(item.href)
                   ? "bg-[var(--accent-primary)] text-white shadow-md shadow-[var(--accent-primary)]/20"
                   : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
-                  }`}
-              >
-                <item.icon className="w-4 h-4" />
-                {item.label}
-              </Link>
-            ))}
+              }`;
+
+              if (isExternal) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={commonClasses}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    {item.label}
+                  </a>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={commonClasses}
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
             {session?.user?.isAdmin && (
               <Link
                 href="/admin"
@@ -230,20 +258,42 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]">
           <div className="px-4 py-4 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActive(item.href)
+            {navItems.map((item) => {
+              const isExternal = "external" in item;
+              const commonClasses = `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                !isExternal && isActive(item.href)
                   ? "bg-[var(--accent-primary)] text-white"
                   : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
-                  }`}
-              >
-                <item.icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            ))}
+              }`;
+
+              if (isExternal) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={commonClasses}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.label}
+                  </a>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={commonClasses}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </Link>
+              );
+            })}
             {session && (
               <Link
                 href="/my-uploads"

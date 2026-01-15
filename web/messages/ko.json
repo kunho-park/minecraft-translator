@@ -29,6 +29,7 @@
         "upload": "업로드",
         "myUploads": "내 업로드",
         "admin": "관리",
+        "directTranslate": "직접 번역하기",
         "loginWithDiscord": "Discord로 로그인"
     },
     "home": {
@@ -72,6 +73,12 @@
             "version": "버전",
             "downloads": "다운로드 수",
             "gameVersions": "지원 버전"
+        },
+        "downloadPopup": {
+            "title": "리뷰 요청",
+            "message": "다운로드가 완료되었습니다. 번역이 정상적으로 작동하는지 확인 후 평가를 남겨주시겠습니까? 다른 사용자에게 큰 도움이 됩니다!",
+            "action": "평가하러 가기",
+            "dismiss": "나중에 하기"
         }
     },
     "translation": {
@@ -160,7 +167,7 @@
     "review": {
         "title": "리뷰",
         "noReviews": "아직 리뷰가 없습니다",
-        "writeReview": "리뷰 작성",
+        "writeReview": "리뷰",
         "works": {
             "label": "작동 여부",
             "yes": "작동함",

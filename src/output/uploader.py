@@ -55,7 +55,7 @@ async def upload_to_website(
     override_path: Path | None = None,
     translation_config: TranslationConfig | None = None,
     translation_stats: TranslationStats | None = None,
-    api_url: str = "http://localhost:3000/api",
+    api_url: str = "https://mct.2odk.com/api",
     anonymous: bool = True,
 ) -> UploadResult:
     """
@@ -190,7 +190,7 @@ async def upload_to_website(
 
 
 async def check_modpack_exists(
-    curseforge_id: int, api_url: str = "http://localhost:3000/api"
+    curseforge_id: int, api_url: str = "https://mct.2odk.com/api"
 ) -> dict | None:
     """
     CurseForge ID로 모드팩 정보를 조회합니다.

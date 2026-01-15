@@ -149,6 +149,17 @@
       "english": "English"
     }
   },
+  "update": {
+    "title": "Update Available",
+    "available": "New version {version} is available!",
+    "current": "Current version: {current_version}",
+    "release_notes": "Release Notes:",
+    "download": "Go to Download Page",
+    "later": "Later",
+    "checking": "Checking for updates...",
+    "error": "Update check failed",
+    "uptodate": "You are up to date."
+  },
   "loading": {
     "title": "Loading...",
     "scanning": "Scanning modpacks...",

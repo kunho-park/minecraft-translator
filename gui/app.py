@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
@@ -62,12 +63,22 @@ class MainWindow(QMainWindow):
         # Create menu bar
         self._create_menu_bar()
 
+        # Check for updates on startup
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(1000, lambda: self.check_updates(manual=False))
+
     def _create_menu_bar(self) -> None:
         """Create menu bar with language selection."""
         menu_bar = self.menuBar()
 
         # Settings menu
         settings_menu = menu_bar.addMenu(self.translator.t("settings.title"))
+
+        # Update action
+        update_action = QAction(self.translator.t("update.checking"), self)
+        update_action.triggered.connect(lambda: self.check_updates(manual=True))
+        settings_menu.addAction(update_action)
+        settings_menu.addSeparator()
 
         # Language submenu
         language_menu = settings_menu.addMenu(
@@ -351,7 +362,16 @@ class MainWindow(QMainWindow):
         from .workers.translation_worker import TranslationWorker
 
         modpack_path = Path(str(self.state["modpack_path"]))
-        output_path = modpack_path.parent / "translation_output"
+        
+        # Create output directory with modpack name and timestamp
+        modpack_name = str(self.state.get("modpack_name", modpack_path.name))
+        # Sanitize modpack name for filesystem
+        safe_modpack_name = "".join(c for c in modpack_name if c.isalnum() or c in (' ', '-', '_')).strip()
+        if not safe_modpack_name:
+            safe_modpack_name = "modpack"
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        output_path = modpack_path.parent / "translation_output" / safe_modpack_name / timestamp
         output_path.mkdir(parents=True, exist_ok=True)
 
         self.state["output_path"] = output_path
@@ -649,3 +669,81 @@ class MainWindow(QMainWindow):
             State value
         """
         return self.state.get(key, default)
+
+    def check_updates(self, manual: bool = False) -> None:
+        """Check for updates.
+
+        Args:
+            manual: Whether this is a manual check initiated by user
+        """
+        from .workers.update_worker import UpdateWorker
+        from qfluentwidgets import InfoBar, InfoBarPosition
+
+        if manual:
+            InfoBar.info(
+                title=self.translator.t("update.checking"),
+                content="",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=False,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=2000,
+                parent=self
+            )
+
+        self.update_worker = UpdateWorker()
+        self.update_worker.updateAvailable.connect(self._on_update_available)
+        self.update_worker.noUpdate.connect(lambda: self._on_no_update(manual))
+        self.update_worker.updateError.connect(lambda e: self._on_update_error(e, manual))
+        self.update_worker.start()
+
+    def _on_update_available(self, version: str, release_notes: str, download_url: str) -> None:
+        """Handle update available.
+
+        Args:
+            version: New version string
+            release_notes: Release notes
+            download_url: Download URL
+        """
+        from .widgets.update_dialog import UpdateDialog
+        
+        dialog = UpdateDialog(version, release_notes, download_url, self)
+        dialog.show()
+
+    def _on_no_update(self, manual: bool) -> None:
+        """Handle no update available.
+
+        Args:
+            manual: Whether this was a manual check
+        """
+        from qfluentwidgets import InfoBar, InfoBarPosition
+
+        if manual:
+            InfoBar.success(
+                title=self.translator.t("update.uptodate"),
+                content="",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=3000,
+                parent=self
+            )
+
+    def _on_update_error(self, error: str, manual: bool) -> None:
+        """Handle update check error.
+
+        Args:
+            error: Error message
+            manual: Whether this was a manual check
+        """
+        from qfluentwidgets import InfoBar, InfoBarPosition
+
+        if manual:
+            InfoBar.error(
+                title=self.translator.t("update.error"),
+                content=error,
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=5000,
+                parent=self
+            )

@@ -149,6 +149,17 @@
             "english": "English"
         }
     },
+    "update": {
+        "title": "업데이트 알림",
+        "available": "새로운 버전 {version}이(가) 사용 가능합니다!",
+        "current": "현재 버전: {current_version}",
+        "release_notes": "릴리스 노트:",
+        "download": "다운로드 페이지로 이동",
+        "later": "나중에",
+        "checking": "업데이트 확인 중...",
+        "error": "업데이트 확인 실패",
+        "uptodate": "최신 버전입니다."
+    },
     "loading": {
         "title": "로딩 중...",
         "scanning": "모드팩 스캔 중...",
