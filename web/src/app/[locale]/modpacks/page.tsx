@@ -4,9 +4,16 @@ import { Prisma } from "@prisma/client";
 import { Package } from "lucide-react";
 import ModpackCard from "@/components/ui/ModpackCard";
 import ModpackFilters from "./ModpackFilters";
+import type { Metadata } from "next";
 
 // Force dynamic rendering (no static generation)
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "모드팩 목록",
+  description:
+    "번역된 마인크래프트 모드팩 목록입니다. 원하는 모드팩의 한글패치를 검색하고 다운로드하세요.",
+};
 
 interface ModpacksPageProps {
   params: Promise<{ locale: string }>;
@@ -32,7 +39,7 @@ export default async function ModpacksPage({
   const langFilter = search.lang || "";
   const tagsFilter = search.tags ? search.tags.split(",") : [];
 
-  // Build where clause
+  // Build where clause for Modpack
   const whereClause: Prisma.ModpackWhereInput = {
     translationPacks: {
       some: {
@@ -42,56 +49,88 @@ export default async function ModpacksPage({
     },
     ...(query
       ? {
-          OR: [
-            { name: { contains: query } },
-            { summary: { contains: query } },
-            { author: { contains: query } },
-          ],
-        }
+        OR: [
+          { name: { contains: query } },
+          { summary: { contains: query } },
+          { author: { contains: query } },
+        ],
+      }
       : {}),
     ...(tagsFilter.length > 0
       ? {
-          AND: tagsFilter.map((tag) => ({
-            categories: { contains: tag },
-          })),
-        }
+        AND: tagsFilter.map((tag) => ({
+          categories: { contains: tag },
+        })),
+      }
       : {}),
   };
 
-  // Get modpacks (flattened schema - downloadCount is on TranslationPack)
-  const modpacks = await prisma.modpack.findMany({
-    where: whereClause,
-    include: {
-      _count: {
-        select: { translationPacks: true },
+  let modpacks: any[] = [];
+
+  if (sortBy === "latest") {
+    // For 'latest' sort, we want to sort by the creation time of the TranslationPack,
+    // not the Modpack's cachedAt time.
+    const packs = await prisma.translationPack.findMany({
+      where: {
+        status: "approved",
+        ...(langFilter ? { targetLang: langFilter } : {}),
+        modpack: whereClause,
       },
-      translationPacks: {
-        where: { status: "approved" },
-        select: {
-          targetLang: true,
-          downloadCount: true,
+      orderBy: { createdAt: "desc" },
+      distinct: ["modpackId"],
+      take: 50,
+      include: {
+        modpack: {
+          include: {
+            _count: {
+              select: { translationPacks: true },
+            },
+            translationPacks: {
+              where: { status: "approved" },
+              select: {
+                targetLang: true,
+                downloadCount: true,
+              },
+            },
+          },
         },
       },
-    },
-    orderBy:
-      sortBy === "downloads"
-        ? { totalDownloads: "desc" }
-        : sortBy === "name"
-          ? { name: "asc" }
-          : { cachedAt: "desc" },
-    take: 50,
-  });
+    });
+    modpacks = packs.map((p) => p.modpack);
+  } else {
+    // For other sorts (name, downloads), we query Modpack directly
+    modpacks = await prisma.modpack.findMany({
+      where: whereClause,
+      include: {
+        _count: {
+          select: { translationPacks: true },
+        },
+        translationPacks: {
+          where: { status: "approved" },
+          select: {
+            targetLang: true,
+            downloadCount: true,
+          },
+        },
+      },
+      orderBy:
+        sortBy === "downloads"
+          ? { totalDownloads: "desc" }
+          : { name: "asc" },
+      take: 50,
+    });
+  }
 
-  // If sorting by translation downloads, do it in JS
+  // If sorting by translation downloads, do it in JS (existing logic)
   let sortedModpacks = modpacks;
   if (sortBy === "downloads") {
     sortedModpacks = [...modpacks].sort((a, b) => {
       const aDownloads = a.translationPacks.reduce(
-        (sum, tp) => sum + (tp.downloadCount || 0),
+        (sum: number, tp: any) => sum + (tp.downloadCount || 0),
         0
       );
       const bDownloads = b.translationPacks.reduce(
-        (sum, tp) => sum + (tp.downloadCount || 0),
+        (sum: number, tp: any) => sum + (tp.downloadCount || 0),
         0
       );
       return bDownloads - aDownloads;

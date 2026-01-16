@@ -33,7 +33,7 @@ export default function ModpackFilters({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const params = new URLSearchParams();
     if (searchQuery) params.set("q", searchQuery);
     if (selectedSort !== "latest") params.set("sort", selectedSort);

@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import type { Metadata, ResolvingMetadata } from "next";
 
 // Force dynamic rendering (no static generation)
 export const dynamic = "force-dynamic";
@@ -34,6 +35,43 @@ import Button from "@/components/ui/Button";
 
 interface ModpackDetailPageProps {
   params: Promise<{ locale: string; id: string }>;
+}
+
+export async function generateMetadata(
+  { params }: ModpackDetailPageProps,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const { id } = await params;
+  const modpackId = parseInt(id, 10);
+
+  if (isNaN(modpackId)) {
+    return {
+      title: "모드팩을 찾을 수 없습니다",
+    };
+  }
+
+  const modpack = await prisma.modpack.findUnique({
+    where: { id: modpackId },
+  });
+
+  if (!modpack) {
+    return {
+      title: "모드팩을 찾을 수 없습니다",
+    };
+  }
+
+  const previousImages = (await parent).openGraph?.images || [];
+
+  return {
+    title: `${modpack.name} 한글패치 & 번역 다운로드`,
+    description: `${modpack.name} 모드팩의 한글 번역, 퀘스트 번역을 다운로드하세요. ${modpack.summary}`,
+    keywords: [modpack.name, "한글패치", "번역", "Modpack", "Minecraft", "마인크래프트"],
+    openGraph: {
+      title: `${modpack.name} 한글패치 다운로드`,
+      description: modpack.summary || undefined,
+      images: modpack.logoUrl ? [modpack.logoUrl, ...previousImages] : previousImages,
+    },
+  };
 }
 
 export default async function ModpackDetailPage({
@@ -137,8 +175,32 @@ export default async function ModpackDetailPage({
     ? JSON.parse(modpack.gameVersions)
     : [];
 
+  // JSON-LD for SEO
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": modpack.name,
+    "applicationCategory": "Game",
+    "operatingSystem": "Windows, macOS, Linux",
+    "description": modpack.summary,
+    "image": modpack.logoUrl,
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "KRW",
+    },
+    "author": {
+      "@type": "Person",
+      "name": modpack.author
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Modpack Header */}
       <div className="glass rounded-xl p-6 mb-8">
         <div className="flex flex-col md:flex-row gap-6">

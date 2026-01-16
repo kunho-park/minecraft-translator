@@ -3,9 +3,16 @@ import { Link } from "@/i18n/navigation";
 import { prisma } from "@/lib/prisma";
 import { Search, ArrowRight, Package, Download, Users, Sparkles, TrendingUp, Zap } from "lucide-react";
 import ModpackCard from "@/components/ui/ModpackCard";
+import type { Metadata } from "next";
 
 // Force dynamic rendering (no static generation)
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "홈",
+  description:
+    "최신 마인크래프트 모드팩 한글패치와 번역을 찾아보세요. 인기 있는 모드팩의 번역을 무료로 다운로드할 수 있습니다.",
+};
 
 interface HomePageProps {
   params: Promise<{ locale: string }>;
@@ -17,31 +24,31 @@ export default async function HomePage({ params }: HomePageProps) {
   const t = await getTranslations();
 
   // Get latest translated modpacks (approved only)
-  const latestModpacks = await prisma.modpack.findMany({
-    where: {
-      translationPacks: {
-        some: {
-          status: "approved",
-        },
-      },
-    },
-    include: {
-      _count: {
-        select: { translationPacks: true },
-      },
-      translationPacks: {
-        where: { status: "approved" },
-        select: {
-          targetLang: true,
-          downloadCount: true,
-        },
-      },
-    },
-    orderBy: {
-      cachedAt: "desc",
-    },
+  // Sorted by the creation time of the translation pack, not the modpack cache time
+  const latestTranslations = await prisma.translationPack.findMany({
+    where: { status: "approved" },
+    orderBy: { createdAt: "desc" },
+    distinct: ["modpackId"],
     take: 6,
+    include: {
+      modpack: {
+        include: {
+          _count: {
+            select: { translationPacks: true },
+          },
+          translationPacks: {
+            where: { status: "approved" },
+            select: {
+              targetLang: true,
+              downloadCount: true,
+            },
+          },
+        },
+      },
+    },
   });
+
+  const latestModpacks = latestTranslations.map((t) => t.modpack);
 
   // Get popular modpacks (by total translation downloads)
   const popularModpacks = await prisma.modpack.findMany({
