@@ -5,7 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { useState } from "react";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import { FileArchive, FolderCog } from "lucide-react";
+import { FileArchive, FolderCog, BookOpen } from "lucide-react";
 
 interface TranslationDownloadActionsProps {
     packId: string;
@@ -86,6 +86,12 @@ export default function TranslationDownloadActions({
                         {t("modpack.downloadPopup.message")}
                     </p>
                     <div className="flex justify-end gap-3">
+                        <Link href="/guide/apply" target="_blank" className="mr-auto">
+                            <Button variant="outline" onClick={() => setShowPopup(false)}>
+                                <BookOpen className="w-4 h-4 mr-2" />
+                                {t("modpack.downloadPopup.guide")}
+                            </Button>
+                        </Link>
                         <Button variant="ghost" onClick={() => setShowPopup(false)}>
                             {t("modpack.downloadPopup.dismiss")}
                         </Button>

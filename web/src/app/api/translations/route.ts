@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifySubmission } from "@/lib/discord";
 import { getCurseForgeClient } from "@/lib/curseforge";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs/promises";
@@ -153,6 +154,23 @@ export async function POST(request: NextRequest) {
         handlerStats: handlerStats || null,
         durationSeconds: durationSeconds ? parseFloat(durationSeconds) : null,
       },
+    });
+
+    // Send submission notification
+    await notifySubmission({
+      id: translationPack.id,
+      modpackId: modpack.id,
+      modpackName: modpack.name,
+      modpackVersion: translationPack.modpackVersion,
+      uploaderName: !anonymous ? session?.user?.name : undefined,
+      sourceLang: translationPack.sourceLang,
+      targetLang: translationPack.targetLang,
+      isManualTranslation: translationPack.isManualTranslation,
+      llmModel: translationPack.llmModel,
+      createdAt: translationPack.createdAt,
+      fileCount: translationPack.fileCount,
+      totalEntries: translationPack.totalEntries,
+      translatedEntries: translationPack.translatedEntries,
     });
 
     return NextResponse.json({

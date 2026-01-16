@@ -78,7 +78,45 @@
             "title": "Review Request",
             "message": "Download complete. Would you like to leave a review after checking if it works properly?",
             "action": "Go to Review",
-            "dismiss": "Later"
+            "dismiss": "Later",
+            "guide": "How to Apply Translation"
+        }
+    },
+    "guide": {
+        "apply": {
+            "title": "Translation Application Guide",
+            "resourcePack": {
+                "title": "Applying Resource Pack",
+                "step1": "Go to Options > Resource Packs.",
+                "step2": "Apply the downloaded resource pack (.zip).",
+                "tip": "Tip: We recommend moving the translation pack to the top of the list."
+            },
+            "override": {
+                "title": "Applying Override Files",
+                "description": "This includes translations that modify game settings directly (Quests, Scripts, etc.).",
+                "curseforge": {
+                    "title": "CurseForge App",
+                    "step1": "Click the menu (3 dots) on the modpack profile.",
+                    "step2": "Select 'Open Folder'.",
+                    "step3": "Overwrite the contents of the modpack folder with the downloaded files."
+                },
+                "otherLaunchers": {
+                    "title": "Other Launchers",
+                    "step1": "Open the folder where the Minecraft instance is installed.",
+                    "step2": "Paste and overwrite the downloaded files into that folder."
+                },
+                "warning": {
+                    "title": "Warning (KubeJS)",
+                    "content": "For modpacks using KubeJS, overwriting script files may cause errors or prevent launch.",
+                    "backup": "Always backup before applying.",
+                    "troubleshoot": "If issues occur, restore backup and try skipping the KubeJS folder or skip overwriting entirely."
+                },
+                "details": {
+                    "title": "Overwritten Files",
+                    "content": "The following folders are translated and overwritten:",
+                    "list": "config, kubejs, scripts, ftbquests"
+                }
+            }
         }
     },
     "translation": {

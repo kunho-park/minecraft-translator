@@ -49,10 +49,19 @@ export async function POST(
 
     // Send Discord notification
     await notifyApproval({
-      id: updated.modpack.id,
+      id: updated.id,
+      modpackId: updated.modpack.id,
       modpackName: updated.modpack.name,
-      uploaderEmail: updated.user?.name || "익명",
+      modpackVersion: updated.modpackVersion,
+      uploaderName: updated.user?.name,
+      sourceLang: updated.sourceLang,
+      targetLang: updated.targetLang,
+      isManualTranslation: updated.isManualTranslation,
+      llmModel: updated.llmModel,
       createdAt: updated.createdAt,
+      fileCount: updated.fileCount,
+      totalEntries: updated.totalEntries,
+      translatedEntries: updated.translatedEntries,
     });
 
     return NextResponse.json(updated);
