@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
 import path from "path";
@@ -10,6 +12,7 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await getServerSession(authOptions);
         const { id: packId } = await params;
         const { searchParams } = new URL(request.url);
         const type = searchParams.get("type"); // "resourcepack" or "override"
@@ -38,8 +41,8 @@ export async function GET(
             );
         }
 
-        // Only allow downloads for approved translations
-        if (translationPack.status !== "approved") {
+        // Only allow downloads for approved translations or if user is admin
+        if (translationPack.status !== "approved" && !session?.user?.isAdmin) {
             return NextResponse.json(
                 { error: "Translation is not approved" },
                 { status: 403 }

@@ -78,7 +78,27 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const { status, sourceLang, targetLang } = body;
+    const { status, sourceLang, targetLang, discordId } = body;
+
+    let userIdUpdate = {};
+    if (discordId !== undefined) {
+      if (discordId === "") {
+        // Optionally allow unassigning? For now assume valid ID required if provided.
+        // Or just ignore if empty.
+      } else {
+        const user = await prisma.user.findUnique({
+          where: { discordId },
+        });
+
+        if (!user) {
+          return NextResponse.json(
+            { error: "해당 Discord ID를 가진 사용자를 찾을 수 없습니다." },
+            { status: 400 }
+          );
+        }
+        userIdUpdate = { userId: user.id };
+      }
+    }
 
     const updatedPack = await prisma.translationPack.update({
       where: { id },
@@ -86,11 +106,19 @@ export async function PATCH(
         ...(status && { status }),
         ...(sourceLang && { sourceLang }),
         ...(targetLang && { targetLang }),
+        ...userIdUpdate,
       },
       include: {
         modpack: {
           select: {
             name: true,
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            avatar: true,
+            discordId: true,
           },
         },
       },

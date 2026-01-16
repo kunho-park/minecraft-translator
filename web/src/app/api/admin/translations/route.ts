@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 // GET - 모든 번역 목록 (관리자 전용) - Flattened schema
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.isAdmin) {
@@ -12,7 +12,21 @@ export async function GET() {
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const q = searchParams.get("q");
+
+    const where = q
+      ? {
+          OR: [
+            { modpack: { name: { contains: q } } }, // SQLite is case-insensitive by default for ASCII, but let's just use contains
+            { user: { name: { contains: q } } },
+            { user: { discordId: { contains: q } } },
+          ],
+        }
+      : undefined;
+
     const translations = await prisma.translationPack.findMany({
+      where,
       include: {
         modpack: {
           select: {

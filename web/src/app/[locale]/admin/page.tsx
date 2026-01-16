@@ -19,6 +19,11 @@ import {
     Edit,
     RefreshCw,
     Database,
+    Search as SearchIcon,
+    Cpu,
+    Layers,
+    FileText,
+    Hash,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 
@@ -42,6 +47,7 @@ interface Translation {
     llmModel: string | null;
     temperature: number | null;
     batchSize: number | null;
+    fileCount: number | null;
     usedGlossary: boolean;
     reviewed: boolean;
     downloadCount: number;
@@ -75,6 +81,8 @@ export default function AdminPage() {
     const [processing, setProcessing] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editStatus, setEditStatus] = useState<string>("");
+    const [editDiscordId, setEditDiscordId] = useState<string>("");
+    const [searchTerm, setSearchTerm] = useState("");
     const [refreshingModpacks, setRefreshingModpacks] = useState(false);
     const [refreshResult, setRefreshResult] = useState<RefreshResult | null>(null);
 
@@ -88,14 +96,14 @@ export default function AdminPage() {
         } else if (status === "unauthenticated") {
             router.push("/");
         }
-    }, [status, session, router, activeTab]);
+    }, [status, session, router, activeTab]); // Remove searchTerm from deps to prevent auto-fetch on type
 
     const fetchTranslations = async () => {
         setLoading(true);
         try {
             const endpoint = activeTab === "pending"
                 ? "/api/admin/pending"
-                : "/api/admin/translations";
+                : `/api/admin/translations${searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : ""}`;
             const response = await fetch(endpoint);
             if (response.ok) {
                 const data = await response.json();
@@ -177,6 +185,7 @@ export default function AdminPage() {
     const handleEditStart = (item: Translation) => {
         setEditingId(item.id);
         setEditStatus(item.status);
+        setEditDiscordId(item.user?.discordId || "");
     };
 
     const handleEditSave = async (id: string) => {
@@ -185,13 +194,21 @@ export default function AdminPage() {
             const response = await fetch(`/api/admin/translations/${id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: editStatus }),
+                body: JSON.stringify({
+                    status: editStatus,
+                    discordId: editDiscordId
+                }),
             });
             if (response.ok) {
+                const data = await response.json();
+                // Update with returned pack data (which includes updated user)
                 setTranslations((prev) =>
-                    prev.map((p) => (p.id === id ? { ...p, status: editStatus } : p))
+                    prev.map((p) => (p.id === id ? { ...p, ...data.pack } : p))
                 );
                 setEditingId(null);
+            } else {
+                const errorData = await response.json();
+                alert(errorData.error || "Failed to update");
             }
         } catch (err) {
             console.error("Failed to update:", err);
@@ -296,25 +313,46 @@ export default function AdminPage() {
             )}
 
             {/* Tabs */}
-            <div className="flex gap-2 mb-6">
-                <button
-                    onClick={() => setActiveTab("pending")}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === "pending"
-                        ? "nav-active"
-                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"
-                        }`}
-                >
-                    {t("admin.pendingReviews")} ({pendingCount})
-                </button>
-                <button
-                    onClick={() => setActiveTab("all")}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === "all"
-                        ? "nav-active"
-                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"
-                        }`}
-                >
-                    {t("admin.allTranslations")}
-                </button>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setActiveTab("pending")}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === "pending"
+                            ? "nav-active"
+                            : "text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"
+                            }`}
+                    >
+                        {t("admin.pendingReviews")} ({pendingCount})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("all")}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === "all"
+                            ? "nav-active"
+                            : "text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"
+                            }`}
+                    >
+                        {t("admin.allTranslations")}
+                    </button>
+                </div>
+
+                {activeTab === "all" && (
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <div className="relative flex-1 md:w-64">
+                            <input
+                                type="text"
+                                placeholder="모드팩, 사용자, Discord ID 검색..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && fetchTranslations()}
+                                className="w-full pl-10 pr-4 py-2 bg-[var(--bg-card)] border border-[var(--border-primary)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                            />
+                            <SearchIcon className="w-4 h-4 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+                        </div>
+                        <Button size="sm" onClick={fetchTranslations}>
+                            검색
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {translations.length > 0 ? (
@@ -349,15 +387,24 @@ export default function AdminPage() {
                                                     {item.modpack.name}
                                                 </h3>
                                                 {isEditing ? (
-                                                    <select
-                                                        value={editStatus}
-                                                        onChange={(e) => setEditStatus(e.target.value)}
-                                                        className="text-xs px-2 py-1 rounded"
-                                                    >
-                                                        <option value="pending">Pending</option>
-                                                        <option value="approved">Approved</option>
-                                                        <option value="rejected">Rejected</option>
-                                                    </select>
+                                                    <div className="flex flex-col gap-2">
+                                                        <select
+                                                            value={editStatus}
+                                                            onChange={(e) => setEditStatus(e.target.value)}
+                                                            className="text-xs px-2 py-1 rounded bg-[var(--bg-input)] border border-[var(--border-primary)]"
+                                                        >
+                                                            <option value="pending">Pending</option>
+                                                            <option value="approved">Approved</option>
+                                                            <option value="rejected">Rejected</option>
+                                                        </select>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Discord ID"
+                                                            value={editDiscordId}
+                                                            onChange={(e) => setEditDiscordId(e.target.value)}
+                                                            className="text-xs px-2 py-1 rounded bg-[var(--bg-input)] border border-[var(--border-primary)] w-32"
+                                                        />
+                                                    </div>
                                                 ) : (
                                                     <span className={`badge ${getStatusBadge(item.status)}`}>
                                                         {t(`translation.status.${item.status}` as never)}
@@ -375,41 +422,81 @@ export default function AdminPage() {
                                                     {new Date(item.createdAt).toLocaleDateString()}
                                                 </span>
                                             </div>
+
+                                            {/* AI Info Badges */}
+                                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                                {item.llmModel && (
+                                                    <span className="flex items-center gap-1 text-xs bg-[var(--bg-tertiary)] px-2 py-0.5 rounded text-[var(--text-secondary)]">
+                                                        <Cpu className="w-3 h-3" />
+                                                        {item.llmModel}
+                                                    </span>
+                                                )}
+                                                {item.batchSize && (
+                                                    <span className="flex items-center gap-1 text-xs bg-[var(--bg-tertiary)] px-2 py-0.5 rounded text-[var(--text-secondary)]">
+                                                        <Layers className="w-3 h-3" />
+                                                        Batch: {item.batchSize}
+                                                    </span>
+                                                )}
+                                                {item.fileCount && (
+                                                    <span className="flex items-center gap-1 text-xs bg-[var(--bg-tertiary)] px-2 py-0.5 rounded text-[var(--text-secondary)]">
+                                                        <FileText className="w-3 h-3" />
+                                                        Files: {item.fileCount}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
                                     {/* Uploader & Stats */}
-                                    <div className="flex items-center gap-4 text-sm">
-                                        <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-                                            {item.user ? (
-                                                <>
-                                                    {item.user.avatar ? (
-                                                        <Image
-                                                            src={item.user.avatar}
-                                                            alt={item.user.name}
-                                                            width={24}
-                                                            height={24}
-                                                            className="w-6 h-6 rounded-full"
-                                                        />
-                                                    ) : (
-                                                        <User className="w-5 h-5" />
-                                                    )}
-                                                    <span className="text-xs">{item.user.name}</span>
-                                                </>
-                                            ) : (
-                                                <span className="text-xs text-[var(--text-muted)]">Anonymous</span>
-                                            )}
+                                    <div className="flex flex-col gap-2 items-end">
+                                        <div className="flex items-center gap-4 text-sm">
+                                            <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                                                {item.user ? (
+                                                    <>
+                                                        {item.user.avatar ? (
+                                                            <Image
+                                                                src={item.user.avatar}
+                                                                alt={item.user.name}
+                                                                width={24}
+                                                                height={24}
+                                                                className="w-6 h-6 rounded-full"
+                                                            />
+                                                        ) : (
+                                                            <User className="w-5 h-5" />
+                                                        )}
+                                                        <div className="flex flex-col items-start">
+                                                            <span className="text-xs font-medium">{item.user.name}</span>
+                                                            <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
+                                                                <Hash className="w-3 h-3" />
+                                                                {item.user.discordId}
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-xs text-[var(--text-muted)]">Anonymous</span>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
                                             {item.resourcePackPath && (
-                                                <span title="Resource Pack">
+                                                <a
+                                                    href={`/api/translations/${item.id}/download?type=resourcepack`}
+                                                    title={`Resource Pack: ${item.resourcePackPath}`}
+                                                    className="flex items-center gap-1 hover:text-[var(--accent-primary)] transition-colors"
+                                                >
                                                     <FileArchive className="w-4 h-4" />
-                                                </span>
+                                                    <span className="max-w-[100px] truncate">{item.resourcePackPath.split('/').pop()}</span>
+                                                </a>
                                             )}
                                             {item.overrideFilePath && (
-                                                <span title="Override File">
+                                                <a
+                                                    href={`/api/translations/${item.id}/download?type=override`}
+                                                    title={`Override File: ${item.overrideFilePath}`}
+                                                    className="flex items-center gap-1 hover:text-[var(--accent-primary)] transition-colors"
+                                                >
                                                     <FolderCog className="w-4 h-4" />
-                                                </span>
+                                                    <span className="max-w-[100px] truncate">{item.overrideFilePath.split('/').pop()}</span>
+                                                </a>
                                             )}
                                             <span>{item.downloadCount} DL</span>
                                             <span>{item._count?.reviews || 0} Reviews</span>
