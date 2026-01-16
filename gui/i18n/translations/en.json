@@ -29,7 +29,8 @@
       "title": "Download",
       "description": "Download translated modpack resource packs",
       "button": "Open Website"
-    }
+    },
+    "discord": "Support & Bug Report (Discord)"
   },
   "modpack_select": {
     "title": "Select Modpack",

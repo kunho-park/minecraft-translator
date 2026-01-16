@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QVBoxLayout, QWidget
 from qfluentwidgets import (
     BodyLabel,
@@ -30,7 +30,9 @@ logger = logging.getLogger(__name__)
 class UploadView(QWidget):
     """View for uploading translations to website."""
 
-    uploadRequested = Signal(int, str, bool, str)  # curseforge_id, version, anonymous, api_url
+    uploadRequested = Signal(
+        int, str, bool, str
+    )  # curseforge_id, version, anonymous, api_url
     skipRequested = Signal()  # Skip upload
 
     def __init__(self, main_window: MainWindow) -> None:
@@ -41,14 +43,15 @@ class UploadView(QWidget):
         """
         super().__init__()
         self.main_window = main_window
-        self.api_url = "https://mct.2odk.com/api"  # Fixed API URL
+        self.api_url = "https://mcat.2odk.com/api"  # Fixed API URL
         self._init_ui()
 
     def _init_ui(self) -> None:
         """Initialize UI components."""
         from ..i18n import get_translator
+
         t = get_translator()
-        
+
         layout = QVBoxLayout(self)
         layout.setSpacing(25)
         layout.setContentsMargins(50, 30, 50, 30)
@@ -56,14 +59,14 @@ class UploadView(QWidget):
         # Title and description
         title_layout = QVBoxLayout()
         title_layout.setSpacing(8)
-        
+
         title = SubtitleLabel(t.t("upload.title"))
         title_layout.addWidget(title)
 
         desc = BodyLabel(t.t("upload.description"))
         desc.setStyleSheet("color: #888888;")
         title_layout.addWidget(desc)
-        
+
         layout.addLayout(title_layout)
 
         # Modpack Info Card
@@ -167,20 +170,24 @@ class UploadView(QWidget):
     def _load_modpack_info(self) -> None:
         """Load modpack info from state and auto-fill form."""
         modpack_info = self.main_window.state.get("modpack_info")
-        
+
         if modpack_info:
             # Update info labels
             self.info_name_label.setText(f"모드팩: {modpack_info.name}")
-            self.info_version_label.setText(f"버전: {modpack_info.version or '알 수 없음'}")
-            
+            self.info_version_label.setText(
+                f"버전: {modpack_info.version or '알 수 없음'}"
+            )
+
             if modpack_info.curseforge_id:
-                self.info_id_label.setText(f"CurseForge ID: {modpack_info.curseforge_id}")
+                self.info_id_label.setText(
+                    f"CurseForge ID: {modpack_info.curseforge_id}"
+                )
                 self.curseforge_id.setText(str(modpack_info.curseforge_id))
                 self.curseforge_id.setEnabled(False)  # Auto-detected, disable editing
             else:
                 self.info_id_label.setText("CurseForge ID: 감지 안됨")
                 self.curseforge_id.setEnabled(True)
-            
+
             if modpack_info.version:
                 self.modpack_version.setText(modpack_info.version)
                 self.modpack_version.setEnabled(False)  # Auto-detected, disable editing
@@ -200,7 +207,7 @@ class UploadView(QWidget):
             self.info_id_label.setText("CurseForge ID: 알 수 없음")
             self.curseforge_id.setEnabled(True)
             self.modpack_version.setEnabled(True)
-            
+
             InfoBar.warning(
                 "자동 감지 실패",
                 "모드팩 정보를 찾을 수 없습니다. 수동으로 입력해주세요.",

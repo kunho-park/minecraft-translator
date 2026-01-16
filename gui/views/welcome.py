@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 from qfluentwidgets import (
     BodyLabel,
     CardWidget,
+    HyperlinkButton,
     PrimaryPushButton,
     SubtitleLabel,
 )
@@ -126,8 +127,9 @@ class WelcomeView(QWidget):
     def _init_ui(self) -> None:
         """Initialize UI components."""
         from ..i18n import get_translator
+
         t = get_translator()
-        
+
         layout = QVBoxLayout(self)
         layout.setSpacing(30)
         layout.setContentsMargins(50, 50, 50, 50)
@@ -171,6 +173,14 @@ class WelcomeView(QWidget):
         layout.addLayout(cards_layout)
         layout.addStretch()
 
+        # Discord link
+        self.discord_link = HyperlinkButton(
+            "https://discord.gg/UBkvjNgvYX",
+            t.t("welcome.discord"),
+            self,
+        )
+        layout.addWidget(self.discord_link, alignment=Qt.AlignmentFlag.AlignHCenter)
+
     def _connect_signals(self) -> None:
         """Connect signals to slots."""
         self.translate_card.button.clicked.connect(self._on_translate_clicked)
@@ -184,4 +194,4 @@ class WelcomeView(QWidget):
 
     def _on_download_clicked(self) -> None:
         """Handle download button click."""
-        webbrowser.open("https://mct.2odk.com/modpacks")
+        webbrowser.open("https://mcat.2odk.com/modpacks")

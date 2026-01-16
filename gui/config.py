@@ -56,7 +56,7 @@ class AppConfig(QObject):
                 "launcher_paths": [],
             },
             "upload": {
-                "api_url": "https://mct.2odk.com/api",
+                "api_url": "https://mcat.2odk.com/api",
                 "anonymous": True,
                 "last_curseforge_id": "",
             },

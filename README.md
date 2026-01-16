@@ -27,7 +27,7 @@ AI 기반 마인크래프트 모드팩 자동 번역 도구
 
 ## 🌐 웹사이트
 
-**[https://mct.2odk.com](https://mct.2odk.com)**
+**[https://mcat.2odk.com](https://mcat.2odk.com)**
 
 웹사이트에서 다음 기능을 이용할 수 있습니다:
 
@@ -39,7 +39,7 @@ AI 기반 마인크래프트 모드팩 자동 번역 도구
 ### AI 번역으로 커뮤니티에 참여하기
 
 1. 이 GUI 도구로 모드팩을 AI 번역
-2. [웹사이트](https://mct.2odk.com)에 번역 업로드
+2. [웹사이트](https://mcat.2odk.com)에 번역 업로드
 3. 다른 사용자들과 번역 공유 및 피드백 받기
 
 ---
@@ -243,7 +243,7 @@ MIT License - 자유롭게 사용, 수정, 배포 가능합니다.
 
 ## 💬 커뮤니티
 
-- **웹사이트**: [https://mct.2odk.com](https://mct.2odk.com)
+- **웹사이트**: [https://mcat.2odk.com](https://mcat.2odk.com)
 - **GitHub**: [Issues](https://github.com/kunho-park/minecraft-translator/issues)
 - **Discord**: [https://discord.gg/UBkvjNgvYX](https://discord.gg/UBkvjNgvYX)
 

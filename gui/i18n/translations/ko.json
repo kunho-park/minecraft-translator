@@ -29,7 +29,8 @@
             "title": "다운로드",
             "description": "이미 번역된 모드팩 리소스팩을 다운로드합니다",
             "button": "웹사이트 열기"
-        }
+        },
+        "discord": "문의 및 오류 제보 (Discord)"
     },
     "modpack_select": {
         "title": "모드팩 선택",
