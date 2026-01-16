@@ -7,7 +7,7 @@ from .models import Glossary, TranslationTask
 from .pipeline import PipelineConfig, PipelineResult, TranslationPipeline, run_pipeline
 from .scanner import ModpackScanner, ScanResult, scan_modpack
 
-__version__ = "2.0.3"
+__version__ = "2.0.4"
 
 __all__ = [
     # Pipeline
