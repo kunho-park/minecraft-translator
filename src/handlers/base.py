@@ -173,7 +173,6 @@ def create_default_registry() -> HandlerRegistry:
     """
     # Import here to avoid circular imports
     from .ftbquests import FTBQuestsHandler
-    from .kubejs import KubeJSHandler
     from .language import LanguageHandler
     from .origins import OriginsHandler
     from .patchouli import PatchouliHandler
@@ -183,7 +182,6 @@ def create_default_registry() -> HandlerRegistry:
     registry = HandlerRegistry()
 
     # Register special handlers (higher priority = checked first)
-    registry.register(KubeJSHandler())  # priority=20
     registry.register(FTBQuestsHandler())  # priority=15
     registry.register(PatchouliHandler())  # priority=13
     registry.register(OriginsHandler())  # priority=12

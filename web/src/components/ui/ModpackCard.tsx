@@ -46,9 +46,14 @@ export default function ModpackCard({ modpack }: ModpackCardProps) {
   // Parse categories from JSON string
   let categories: { name: string; slug: string }[] = [];
   try {
-    categories = modpack.categories
+    const parsed = modpack.categories
       ? (JSON.parse(modpack.categories) as { name: string; slug: string }[])
       : [];
+    // Deduplicate categories by slug
+    categories = parsed.filter(
+      (category, index, self) =>
+        index === self.findIndex((c) => c.slug === category.slug)
+    );
   } catch {
     categories = [];
   }
@@ -70,6 +75,7 @@ export default function ModpackCard({ modpack }: ModpackCardProps) {
                 width={72}
                 height={72}
                 className="w-[72px] h-[72px] rounded-xl object-cover ring-2 ring-[var(--border-primary)] group-hover:ring-[var(--accent-primary)]/30 transition-all"
+                unoptimized={modpack.logoUrl.includes(".gif")}
               />
             ) : (
               <div className="w-[72px] h-[72px] rounded-xl bg-gradient-to-br from-[var(--accent-primary)]/20 to-[var(--bg-tertiary)] flex items-center justify-center ring-2 ring-[var(--border-primary)]">

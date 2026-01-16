@@ -7,7 +7,6 @@ content and apply translations back to files.
 
 from .base import ContentHandler, HandlerRegistry
 from .ftbquests import FTBQuestsHandler
-from .kubejs import KubeJSHandler
 from .language import LanguageHandler
 from .origins import OriginsHandler
 from .patchouli import PatchouliHandler
@@ -19,7 +18,6 @@ __all__ = [
     "HandlerRegistry",
     "LanguageHandler",
     # Mod-specific handlers
-    "KubeJSHandler",
     "FTBQuestsHandler",
     "OriginsHandler",
     "PatchouliHandler",

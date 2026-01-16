@@ -427,7 +427,10 @@ export default async function ModpackDetailPage({
                                 {pack.durationSeconds !== null && (
                                   <span className="flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
-                                    {t("translation.stats.duration")}: {Math.floor(pack.durationSeconds / 60)}{t("translation.stats.durationFormat").includes("분") ? "분 " : "m "}{Math.round(pack.durationSeconds % 60)}{t("translation.stats.durationFormat").includes("초") ? "초" : "s"}
+                                    {t("translation.stats.duration")}: {t("translation.stats.durationFormat", {
+                                      minutes: Math.floor(pack.durationSeconds / 60),
+                                      seconds: Math.round(pack.durationSeconds % 60)
+                                    })}
                                   </span>
                                 )}
                                 {pack.totalTokens !== null && (
