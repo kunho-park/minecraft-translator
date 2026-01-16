@@ -41,8 +41,8 @@ class LanguageHandler(ContentHandler):
 
         # 1. JSON files: Must look like locale (e.g., en_us.json, ko_kr.json)
         if suffix == ".json":
-            # Match strictly: xx_xx.json only
-            return bool(re.match(r"^[a-z]{2,3}_[a-z]{2,3}\.json$", name))
+            # Match strictly: xx_xx.json only (2 letters each)
+            return bool(re.match(r"^[a-z]{2}_[a-z]{2}\.json$", name))
 
         return False
 

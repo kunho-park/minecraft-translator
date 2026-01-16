@@ -114,7 +114,9 @@ class ScanResultView(QWidget):
         llm_form.setSpacing(15)
 
         self.llm_provider = ComboBox()
-        self.llm_provider.addItems(["ollama", "openai", "anthropic", "google"])
+        self.llm_provider.addItems(
+            ["ollama", "openai", "anthropic", "google", "grok", "deepseek"]
+        )
         self.llm_provider.setCurrentText("ollama")
         self.llm_provider.currentTextChanged.connect(self._on_provider_changed)
         llm_form.addRow(t.t("scan_result.llm.provider"), self.llm_provider)
@@ -320,6 +322,8 @@ class ScanResultView(QWidget):
                 "https://generativelanguage.googleapis.com/v1beta",
                 "gemini-1.5-pro",
             ),
+            "grok": ("https://api.x.ai/v1", "grok-2-1212"),
+            "deepseek": ("https://api.deepseek.com", "deepseek-chat"),
         }
 
         base_url, default_model = defaults.get(provider, ("", ""))

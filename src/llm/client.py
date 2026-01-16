@@ -365,6 +365,8 @@ class LLMProvider(str, Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
+    GROK = "grok"
+    DEEPSEEK = "deepseek"
 
 
 class LLMConfig(BaseModel):
@@ -510,7 +512,11 @@ class LLMClient:
 
             llm = ChatOllama(**kwargs)
 
-        elif self.config.provider == LLMProvider.OPENAI:
+        elif self.config.provider in (
+            LLMProvider.OPENAI,
+            LLMProvider.GROK,
+            LLMProvider.DEEPSEEK,
+        ):
             from langchain_openai import ChatOpenAI
 
             kwargs = {
@@ -519,6 +525,8 @@ class LLMClient:
             }
             if self.config.api_key:
                 kwargs["api_key"] = self.config.api_key
+            if self.config.base_url:
+                kwargs["base_url"] = self.config.base_url
             if self.config.max_tokens:
                 kwargs["max_tokens"] = self.config.max_tokens
             if self._rate_limiter:
