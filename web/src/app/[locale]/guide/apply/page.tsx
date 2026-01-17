@@ -38,6 +38,10 @@ export default async function GuidePage({ params }: GuidePageProps) {
               <Info className="w-5 h-5 text-blue-500 flex-shrink-0" />
               <p className="text-sm text-blue-600 dark:text-blue-400">{t("resourcePack.tip")}</p>
             </div>
+            <div className="mt-3 p-4 bg-amber-500/5 border border-amber-500/10 rounded-lg flex gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0" />
+              <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">{t("resourcePack.versionWarning")}</p>
+            </div>
           </div>
         </section>
 

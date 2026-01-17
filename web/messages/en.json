@@ -105,7 +105,8 @@
                 "title": "Applying Resource Pack",
                 "step1": "Go to Options > Resource Packs.",
                 "step2": "Apply the downloaded resource pack (.zip).",
-                "tip": "Tip: We recommend moving the translation pack to the top of the list."
+                "tip": "Tip: We recommend moving the translation pack to the top of the list.",
+                "versionWarning": "Please ignore any version incompatibility errors (red text) and force apply the resource pack."
             },
             "override": {
                 "title": "Applying Override Files",
