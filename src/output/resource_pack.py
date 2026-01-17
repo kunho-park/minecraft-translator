@@ -12,8 +12,12 @@ from typing import TYPE_CHECKING
 
 import aiofiles
 
+from ..handlers.base import create_default_registry
+from .jar_mod import JarModGenerator
+
 if TYPE_CHECKING:
     from ..models import TranslationTask
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +43,7 @@ class GenerationResult:
     resource_pack_path: Path | None = None
     override_paths: list[Path] = field(default_factory=list)
     override_zip_path: Path | None = None
+    jar_mod_paths: list[Path] = field(default_factory=list)
     files_generated: int = 0
     errors: list[str] = field(default_factory=list)
 
@@ -184,7 +189,6 @@ class ResourcePackGenerator:
         logger.debug("Wrote language file: %s", lang_file)
 
 
-
 class OverrideGenerator:
     """Generator for override files (config, KubeJS, etc.).
 
@@ -199,6 +203,7 @@ class OverrideGenerator:
             target_locale: Target language locale.
         """
         self.target_locale = target_locale
+        self.registry = create_default_registry()
         logger.info("Initialized OverrideGenerator")
 
     async def generate(
@@ -296,7 +301,23 @@ class OverrideGenerator:
         # Create parent directories
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write file using appropriate parser
+        output_data = task.to_output_dict()
+
+        # Try to use handler first (preserves structure)
+        handler = self.registry.get_handler(source_path)
+        if handler:
+            try:
+                await handler.apply(source_path, output_data, output_path)
+                logger.debug("Wrote override file using handler: %s", output_path)
+                return output_path
+            except Exception as e:
+                logger.warning(
+                    "Handler failed to apply overrides for %s, falling back to parser: %s",
+                    source_path,
+                    e,
+                )
+
+        # Fallback to parser
         from ..parsers import BaseParser
 
         parser = BaseParser.create_parser(output_path, source_path)
@@ -304,7 +325,6 @@ class OverrideGenerator:
             logger.debug("No parser for override: %s", output_path)
             return None
 
-        output_data = task.to_output_dict()
         await parser.dump(output_data)
 
         logger.debug("Wrote override file: %s", output_path)
@@ -336,11 +356,25 @@ async def generate_outputs(
     # Separate tasks by type
     resource_pack_tasks: list[TranslationTask] = []
     override_tasks: list[TranslationTask] = []
+    jar_mod_tasks: list[TranslationTask] = []
 
     override_gen = OverrideGenerator()
 
     for task in tasks:
-        if override_gen._should_be_override(task.file_pair.source_path):
+        # Check for Jar Mod tasks first
+        if _should_be_jar_mod(task):
+            jar_mod_tasks.append(task)
+        elif override_gen._should_be_override(task.file_pair.source_path):
+            # Skip extracted files for overrides to prevent temporary paths in output
+            # (Extracted files are inside JARs, so they can't be overrides unless extracted to system path, which is rare)
+            if ".mct_cache" in str(task.file_pair.source_path) or "extracted" in str(
+                task.file_pair.source_path
+            ):
+                logger.debug(
+                    "Skipping extracted override candidate: %s",
+                    task.file_pair.source_path,
+                )
+                continue
             override_tasks.append(task)
         else:
             resource_pack_tasks.append(task)
@@ -362,9 +396,38 @@ async def generate_outputs(
         # Zip overrides if requested
         if create_zip and override_paths:
             override_dir = output_dir / "overrides"
-            zip_path = output_dir / f"{pack_config.pack_name}_overrides.zip" if pack_config else output_dir / "overrides.zip"
+            zip_path = (
+                output_dir / f"{pack_config.pack_name}_overrides.zip"
+                if pack_config
+                else output_dir / "overrides.zip"
+            )
             create_zip_from_directory(override_dir, zip_path)
             result.override_zip_path = zip_path
             logger.info("Created override zip: %s", zip_path)
 
+    # Generate JAR mods
+    if jar_mod_tasks:
+        jar_mod_gen = JarModGenerator()
+        jar_mod_paths = await jar_mod_gen.generate(
+            jar_mod_tasks, output_dir, modpack_root
+        )
+        result.jar_mod_paths = jar_mod_paths
+        result.files_generated += len(jar_mod_paths)
+
     return result
+
+
+def _should_be_jar_mod(task: TranslationTask) -> bool:
+    """Check if a task should be handled as a JAR modification."""
+    source_path_str = str(task.file_pair.source_path).lower().replace("\\", "/")
+
+    # Must be from extracted cache
+    if ".mct_cache" not in source_path_str and "extracted" not in source_path_str:
+        return False
+
+    # If it's in data/ folder, it usually requires JAR modification
+    # (unless it's a datapack, but finding data inside JAR usually implies it's a mod internal data)
+    if "/data/" in source_path_str:
+        return True
+
+    return False

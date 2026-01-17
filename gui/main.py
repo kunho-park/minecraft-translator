@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import faulthandler
 import logging
 import sys
+import traceback
 from pathlib import Path
 
 import colorlog
@@ -33,7 +35,7 @@ def setup_logging() -> None:
 
     logger = colorlog.getLogger()
     logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     # Disable AFC logging from google_genai.models
     logging.getLogger("google_genai.models").setLevel(logging.WARNING)
@@ -58,8 +60,18 @@ def main() -> int:
         Exit code
     """
     setup_logging()
+    # Enable faulthandler to catch segmentation faults
+    faulthandler.enable()
+
     logger = logging.getLogger(__name__)
     logger.info("Starting Modpack Translator GUI")
+
+    # Set up exception hook to log unhandled exceptions
+    def exception_hook(exctype, value, tb):
+        logger.critical("Unhandled exception:", exc_info=(exctype, value, tb))
+        sys.__excepthook__(exctype, value, tb)
+
+    sys.excepthook = exception_hook
 
     # Create Qt application
     app = QApplication(sys.argv)

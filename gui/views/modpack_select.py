@@ -150,19 +150,29 @@ class ModpackCard(QFrame):
             return
 
         try:
-            request = QNetworkRequest(QUrl(self.modpack.thumbnail_url))
+            logger.info("Starting thumbnail download: %s", self.modpack.thumbnail_url)
+            url = QUrl(self.modpack.thumbnail_url)
+            request = QNetworkRequest(url)
             reply = self.network_manager.get(request)
+            logger.info("Network request initiated")
             reply.finished.connect(lambda: self._on_thumbnail_loaded(reply))
         except Exception as e:
-            logger.debug("Failed to start thumbnail load: %s", e)
+            logger.error("Failed to start thumbnail load: %s", e, exc_info=True)
 
     def _on_thumbnail_loaded(self, reply: QNetworkReply) -> None:
         """Handle thumbnail download completion."""
         try:
+            logger.info("Thumbnail download finished. Error: %s", reply.error())
             if reply.error() == QNetworkReply.NetworkError.NoError:
                 data: QByteArray = reply.readAll()
+                logger.info("Thumbnail data size: %d bytes", data.size())
                 pixmap = QPixmap()
                 if pixmap.loadFromData(data):
+                    logger.info(
+                        "Thumbnail loaded successfully. Size: %dx%d",
+                        pixmap.width(),
+                        pixmap.height(),
+                    )
                     scaled = pixmap.scaled(
                         180,
                         135,
@@ -180,7 +190,7 @@ class ModpackCard(QFrame):
                         "background-color: transparent; border-radius: 6px;"
                     )
         except Exception as e:
-            logger.debug("Failed to load thumbnail: %s", e)
+            logger.error("Failed to load thumbnail: %s", e, exc_info=True)
         finally:
             reply.deleteLater()
 
@@ -303,18 +313,20 @@ class ScannerThread(QThread):
                     # 1. Root projectID (가장 정확)
                     if data.get("projectID"):
                         info.curseforge_id = data.get("projectID")
-                    
+
                     installed_modpack = data.get("installedModpack")
                     if installed_modpack:
                         info.thumbnail_url = installed_modpack.get("thumbnailUrl", "")
                         info.website_url = installed_modpack.get("webSiteURL", "")
-                        
+
                         # 2. installedModpack.addonID (대체)
                         if not info.curseforge_id and installed_modpack.get("addonID"):
                             info.curseforge_id = installed_modpack.get("addonID")
-                        
+
                         # 3. installedModpack.projectID (구버전)
-                        if not info.curseforge_id and installed_modpack.get("projectID"):
+                        if not info.curseforge_id and installed_modpack.get(
+                            "projectID"
+                        ):
                             info.curseforge_id = installed_modpack.get("projectID")
 
                         # Override version if available
@@ -679,35 +691,43 @@ class ModpackSelectionView(QWidget):
             manifest_path = modpack_path / "manifest.json"
             if manifest_path.exists():
                 try:
+                    logger.info("Reading manifest.json at %s", manifest_path)
                     with open(manifest_path, encoding="utf-8") as f:
                         data = json.load(f)
                         info.name = data.get("name", info.name)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error("Error reading manifest.json: %s", e)
 
             instance_json_path = modpack_path / "minecraftinstance.json"
             if instance_json_path.exists():
                 try:
+                    logger.info(
+                        "Reading minecraftinstance.json at %s", instance_json_path
+                    )
                     with open(instance_json_path, encoding="utf-8") as f:
                         data = json.load(f)
                         info.name = data.get("name", info.name)
-                        
+
                         # CurseForge ID 감지 (여러 위치 확인)
                         if data.get("projectID"):
                             info.curseforge_id = data.get("projectID")
-                        
+
                         installed_modpack = data.get("installedModpack")
                         if installed_modpack:
                             info.thumbnail_url = installed_modpack.get(
                                 "thumbnailUrl", ""
                             )
-                            
+
                             # 대체 ID 위치 확인
-                            if not info.curseforge_id and installed_modpack.get("addonID"):
+                            if not info.curseforge_id and installed_modpack.get(
+                                "addonID"
+                            ):
                                 info.curseforge_id = installed_modpack.get("addonID")
-                            if not info.curseforge_id and installed_modpack.get("projectID"):
+                            if not info.curseforge_id and installed_modpack.get(
+                                "projectID"
+                            ):
                                 info.curseforge_id = installed_modpack.get("projectID")
-                            
+
                             info.version = installed_modpack.get(
                                 "version", info.version
                             )

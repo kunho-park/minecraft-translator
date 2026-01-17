@@ -178,6 +178,7 @@ def create_default_registry() -> HandlerRegistry:
     from .patchouli import PatchouliHandler
     from .puffish_skills import PuffishSkillsHandler
     from .tconstruct import TConstructHandler
+    from .the_vault_quest import TheVaultQuestHandler
 
     registry = HandlerRegistry()
 
@@ -187,6 +188,7 @@ def create_default_registry() -> HandlerRegistry:
     registry.register(OriginsHandler())  # priority=12
     registry.register(PuffishSkillsHandler())  # priority=11
     registry.register(TConstructHandler())  # priority=11
+    registry.register(TheVaultQuestHandler())  # priority=10
     registry.register(LanguageHandler())  # priority=9
 
     logger.info(

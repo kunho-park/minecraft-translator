@@ -30,6 +30,8 @@ class OriginsHandler(ContentHandler):
         "\\origins\\",
         "/powers/",
         "\\powers\\",
+        "/origin_layers/",
+        "\\origin_layers\\",
     )
 
     extensions: ClassVar[tuple[str, ...]] = (".json",)
@@ -41,6 +43,10 @@ class OriginsHandler(ContentHandler):
             "subtitle",
             "description",
             "name",
+            "choose_origin",
+            "view_origin",
+            "missing_name",
+            "missing_description",
         }
     )
 
@@ -130,7 +136,9 @@ class OriginsHandler(ContentHandler):
 
         modified = self._apply_recursive(data, translations, "")
 
-        if not modified:
+        # If output_path is specified, we should write the file even if not modified
+        # so that the caller (e.g. JarModGenerator) gets the content.
+        if not modified and output_path is None:
             logger.debug("No translations applied to: %s", path.name)
             return
 

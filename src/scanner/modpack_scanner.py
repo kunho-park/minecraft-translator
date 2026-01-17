@@ -138,6 +138,11 @@ class ModpackScanner:
         self._load_config_files(modpack_path, result)
 
         self._report_progress(
+            "The Vault 퀘스트 스캔 중...", 1, 7, "The Vault 퀘스트 파일을 스캔하고 있습니다..."
+        )
+        self._load_the_vault_quest_files(modpack_path, result)
+
+        self._report_progress(
             "FTB Quests 스캔 중...", 2, 7, "FTB Quests 파일을 스캔하고 있습니다..."
         )
         self._load_ftbquests_files(modpack_path, result)
@@ -267,6 +272,8 @@ class ModpackScanner:
                 try:
                     if "ftbquests" in file_path.lower():
                         continue
+                    if "the_vault/quest" in file_path.lower() or "the_vault\\quest" in file_path.lower():
+                        continue
                     if self._is_translation_file(file_path):
                         result.translation_files.append(
                             TranslationFile(
@@ -320,6 +327,39 @@ class ModpackScanner:
 
         count = len([f for f in result.translation_files if f.file_type == "ftbquests"])
         logger.info("ftbquests 폴더에서 %d개 파일 발견 (.snbt, .nbt)", count)
+
+    def _load_the_vault_quest_files(self, modpack_path: Path, result: ScanResult) -> None:
+        """Load translation files from the_vault/quest folder."""
+        search_paths = [modpack_path / "config" / "the_vault" / "quest"]
+
+        for path in search_paths:
+            if not path.is_dir():
+                continue
+            pattern = self._normalize_glob_path(path / "**" / "*.json")
+            logger.info("Scanning The Vault Quests: %s", pattern)
+
+            try:
+                for file_path in self._safe_iglob(str(pattern), recursive=True):
+                    if len(result.translation_files) >= self.max_scan_files:
+                        logger.warning("Max file limit reached during The Vault Quest scan")
+                        break
+
+                    try:
+                        if self._is_translation_file(file_path):
+                            result.translation_files.append(
+                                TranslationFile(
+                                    input_path=file_path,
+                                    file_type="the_vault_quest",
+                                    category="The Vault Quests",
+                                )
+                            )
+                    except Exception as e:
+                        logger.debug("Failed to process The Vault Quest file %s: %s", file_path, e)
+            except Exception as e:
+                logger.error("The Vault Quest scan failed: %s", e)
+
+        count = len([f for f in result.translation_files if f.file_type == "the_vault_quest"])
+        logger.info("the_vault/quest 폴더에서 %d개 파일 발견", count)
 
     def _load_kubejs_files(self, modpack_path: Path, result: ScanResult) -> None:
         """Load translation files from kubejs folder."""
@@ -449,7 +489,9 @@ class ModpackScanner:
         mod_display_name = Path(jar_name).stem.split("-")[0].replace("_", " ").title()
 
         with zipfile.ZipFile(jar_path, "r") as zf:
-            extract_dir = modpack_path / "mods" / "extracted" / jar_name
+            # Use a hidden cache directory instead of mods/extracted
+            # This prevents extracted files from being treated as part of the modpack structure
+            extract_dir = modpack_path / ".mct_cache" / "extracted" / jar_name
             extract_dir.mkdir(parents=True, exist_ok=True)
 
             for entry in zf.namelist():

@@ -12,6 +12,7 @@ from .origins import OriginsHandler
 from .patchouli import PatchouliHandler
 from .puffish_skills import PuffishSkillsHandler
 from .tconstruct import TConstructHandler
+from .the_vault_quest import TheVaultQuestHandler
 
 __all__ = [
     "ContentHandler",
@@ -23,4 +24,5 @@ __all__ = [
     "PatchouliHandler",
     "PuffishSkillsHandler",
     "TConstructHandler",
+    "TheVaultQuestHandler",
 ]
