@@ -17,7 +17,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Type alias for JSON values (recursive)
-type JSONValue = str | int | float | bool | None | list[JSONValue] | dict[str, JSONValue]
+type JSONValue = (
+    str | int | float | bool | None | list[JSONValue] | dict[str, JSONValue]
+)
 
 
 class JSONParser(BaseParser):
@@ -25,7 +27,7 @@ class JSONParser(BaseParser):
 
     Handles JSON files with optional comments and nested structures.
     Flattens nested JSON to extract translatable strings.
-    
+
     Only processes language files (files in /lang/ folders or with locale codes in name).
     """
 
@@ -33,15 +35,40 @@ class JSONParser(BaseParser):
 
     # Pattern to remove single-line comments from JSON
     COMMENT_PATTERN = re.compile(r"^\s*//.*$|//.*$", re.MULTILINE)
-    
+
     # Common Minecraft locale codes
     LOCALE_PATTERN = re.compile(
         r"(?:^|[/_-])"  # Start or separator
         r"(?:en|ko|ja|zh|de|fr|es|it|pt|ru|pl|nl|sv|no|da|fi|cs|tr|ar|th|vi|id|ms|tl|hi|uk|bg|ro|hr|hu|sk|sl|sr|lt|lv|et|el|he|fa|af)_"  # Language code
         r"(?:us|gb|kr|jp|cn|tw|de|fr|es|mx|br|it|pt|ru|pl|nl|se|no|dk|fi|cz|tr|ar|th|vn|id|my|ph|in|ua|bg|ro|hr|hu|sk|si|rs|lt|lv|ee|gr|il|ir|za)"  # Country code
         r"(?:[/_.\-]|$)",  # Separator or end
-        re.IGNORECASE
+        re.IGNORECASE,
     )
+
+    async def load_data(self) -> JSONValue:
+        """Load the JSON file and return the structured data.
+
+        Returns:
+            The parsed JSON data.
+
+        Raises:
+            ParseError: If the file cannot be read or parsed.
+        """
+        self._check_extension()
+        # logger.debug("Loading JSON file: %s", self.path)
+
+        try:
+            async with aiofiles.open(
+                self.path, encoding="utf-8", errors="replace"
+            ) as f:
+                content = await f.read()
+        except OSError as e:
+            raise ParseError(self.path, f"Could not read file: {e}") from e
+
+        try:
+            return self._load_json_content(content)
+        except ValueError as e:
+            raise ParseError(self.path, str(e)) from e
 
     async def parse(self) -> Mapping[str, str]:
         """Parse a JSON file and extract translatable strings.
@@ -52,22 +79,14 @@ class JSONParser(BaseParser):
         Raises:
             ParseError: If the JSON file cannot be parsed.
         """
-        self._check_extension()
         logger.info("Parsing JSON file: %s", self.path)
 
-        try:
-            async with aiofiles.open(self.path, encoding="utf-8", errors="replace") as f:
-                content = await f.read()
-        except OSError as e:
-            raise ParseError(self.path, f"Could not read file: {e}") from e
-
-        try:
-            data = self._load_json_content(content)
-        except ValueError as e:
-            raise ParseError(self.path, str(e)) from e
-
+        data = await self.load_data()
         result = self._flatten_json(data)
-        logger.debug("Extracted %d translatable strings from %s", len(result), self.path)
+
+        logger.debug(
+            "Extracted %d translatable strings from %s", len(result), self.path
+        )
         return result
 
     async def dump(self, data: Mapping[str, str]) -> None:
@@ -84,7 +103,9 @@ class JSONParser(BaseParser):
         # Read original structure
         source_path = self.original_path if self.original_path else self.path
         try:
-            async with aiofiles.open(source_path, encoding="utf-8", errors="replace") as f:
+            async with aiofiles.open(
+                source_path, encoding="utf-8", errors="replace"
+            ) as f:
                 original_content = await f.read()
         except OSError as e:
             raise DumpError(self.path, f"Could not read original file: {e}") from e

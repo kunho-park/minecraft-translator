@@ -244,7 +244,7 @@ class TranslationPipeline:
             cumulative_total: Cumulative total tokens
         """
         logger.debug(
-            "Token usage: +%d input, +%d output, +%d total (累積: %d input, %d output, %d total)",
+            "Token usage: +%d input, +%d output, +%d total (누적: %d input, %d output, %d total)",
             input_tokens,
             output_tokens,
             total_tokens,

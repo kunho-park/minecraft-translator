@@ -151,26 +151,34 @@ class GlossaryBuilder:
         target_lang = get_language_name(self.target_locale, "en")
 
         return f"""You are a Minecraft mod translation expert.
-Analyze the given {source_lang}-{target_lang} translation corpus to extract rules for consistent translation.
+Your task is to analyze the {source_lang}-{target_lang} translation corpus and extract rules for consistent translation.
 
-Output the following rules in JSON format:
+# Output Format
+Return a JSON object containing three lists: 'term_rules', 'proper_noun_rules', and 'formatting_rules'.
 
-1. **term_rules** (Terminology): Common game terms and their translation style
-   - term_ko: {target_lang} term (e.g., for items/blocks)
-   - preferred_style: Style description
-   - aliases: List of {source_lang} source terms
-   - category: item/block/ui/entity/effect/biome/other
-   - notes: Additional notes
+# 1. Terminology Rules (term_rules)
+Extract specific game terms (items, blocks, entities, UI).
+- term_ko: The {target_lang} translation.
+- aliases: List of {source_lang} source terms mapped to this translation.
+- category: One of [item, block, ui, entity, effect, biome, other].
+- notes: Brief note on usage.
 
-2. **proper_noun_rules** (Proper Nouns): Consistent translations of proper nouns
-   - source_like: Original {source_lang} form (e.g., "Nether", "Ender")
-   - preferred_ko: Preferred {target_lang} form
-   - notes: Translation reasoning
+# 2. Proper Noun Rules (proper_noun_rules)
+Extract specific names (places, characters, mods) that require consistent translation.
+- source_like: The original {source_lang} name.
+- preferred_ko: The preferred {target_lang} translation.
+- notes: Reasoning.
 
-3. **formatting_rules** (Formatting): Style guide
-   - rule_name: Rule name
-   - description: Rule description
-   - examples: Example list"""
+# 3. Formatting Rules (formatting_rules)
+Extract general style guidelines (punctuation, placeholders, honorifics).
+- rule_name: Short, descriptive name of the rule.
+- description: Clear explanation of the rule.
+- examples: List of valid examples.
+
+# Constraints
+- Only extract rules clearly supported by the text.
+- Return empty lists if no rules are found for a category.
+"""
 
     def _build_source_only_prompt(self) -> str:
         """Build system prompt for source-only extraction."""
@@ -181,34 +189,41 @@ Output the following rules in JSON format:
         lang_specific = ""
         if self.target_locale.startswith("ko"):
             lang_specific = """
-Reference official Minecraft Korean translation style:
-- Follow official translations for items/blocks
-- Preserve placeholders (%s, %d, etc.)
-- Preserve color codes (§, &)
-- Handle particles correctly: 이(가), 을(를)"""
+# Korean Translation Style Guide
+- Follow official Minecraft translations for items/blocks.
+- Preserve placeholders (%s, %d, etc.) and color codes (§, &).
+- Use proper particles (이/가, 을/를) handling.
+"""
 
         return f"""You are a Minecraft mod translation expert.
-Analyze the given {source_lang} text to propose rules for consistent {target_lang} translation.
+Your task is to analyze the {source_lang} text and propose rules for consistent {target_lang} translation.
 
-Output the following rules in JSON format:
+# Output Format
+Return a JSON object containing three lists: 'term_rules', 'proper_noun_rules', and 'formatting_rules'.
 
-1. **term_rules** (Terminology): Identified game terms and recommended translations
-   - term_ko: Recommended {target_lang} translation
-   - preferred_style: Translation style description
-   - aliases: List of {source_lang} source terms
-   - category: item/block/ui/entity/effect/biome/other
-   - notes: Translation reasoning
+# 1. Terminology Rules (term_rules)
+Identify game terms and suggest translations.
+- term_ko: Recommended {target_lang} translation.
+- aliases: List of {source_lang} source terms.
+- category: One of [item, block, ui, entity, effect, biome, other].
 
-2. **proper_noun_rules** (Proper Nouns): Identified proper nouns and recommended translations
-   - source_like: {source_lang} proper noun
-   - preferred_ko: Recommended {target_lang} form (transliteration or translation)
-   - notes: Translation reasoning
+# 2. Proper Noun Rules (proper_noun_rules)
+Identify proper nouns and suggest translations.
+- source_like: The {source_lang} proper noun.
+- preferred_ko: Recommended {target_lang} form (transliteration or translation).
 
-3. **formatting_rules** (Formatting): Style guide to apply during translation
-   - rule_name: Rule name
-   - description: Rule description
-   - examples: Example list
-{lang_specific}"""
+# 3. Formatting Rules (formatting_rules)
+Suggest style guidelines based on the text structure.
+- rule_name: Short name of the rule.
+- description: Clear explanation.
+- examples: Examples.
+
+{lang_specific}
+
+# Constraints
+- Only propose rules relevant to the text.
+- Return empty lists if uncertain.
+"""
 
     async def build_from_pairs(
         self,

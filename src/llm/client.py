@@ -315,7 +315,7 @@ class TokenUsageCallback(AsyncCallbackHandler):
                 self._tpm_limiter.record_usage(total)
 
             logger.debug(
-                "Token usage (estimated): +%d input, +%d output, +%d total (累積: %d)",
+                "Token usage (estimated): +%d input, +%d output, +%d total (누적: %d)",
                 input_tokens,
                 output_tokens,
                 total,

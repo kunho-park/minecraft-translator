@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -63,33 +64,29 @@ class TheVaultQuestHandler(ContentHandler):
             return {}
 
         try:
+            # Get flattened data directly from parser
             raw_data = await parser.parse()
         except Exception as e:
             logger.error("Failed to parse %s: %s", path, e)
             return {}
 
         entries: dict[str, str] = {}
-        
-        # Ensure it's a dict and has "quests" list
-        if isinstance(raw_data, dict) and "quests" in raw_data and isinstance(raw_data["quests"], list):
-            for i, quest in enumerate(raw_data["quests"]):
-                if not isinstance(quest, dict):
-                    continue
 
-                # Extract quest name
-                if "name" in quest and isinstance(quest["name"], str):
-                    entries[f"quests[{i}].name"] = quest["name"]
+        # Regex for Quest name: quests[0].name
+        name_pattern = re.compile(r"^quests\[\d+\]\.name$")
+        # Regex for Description text: quests[0].descriptionData.description[0].text
+        desc_pattern = re.compile(
+            r"^quests\[\d+\]\.descriptionData\.description\[\d+\]\.text$"
+        )
 
-                # Extract description
-                if "descriptionData" in quest and isinstance(quest["descriptionData"], dict):
-                    desc_data = quest["descriptionData"]
-                    if "description" in desc_data and isinstance(desc_data["description"], list):
-                        for j, desc_part in enumerate(desc_data["description"]):
-                            if isinstance(desc_part, dict) and "text" in desc_part and isinstance(desc_part["text"], str):
-                                entries[f"quests[{i}].descriptionData.description[{j}].text"] = desc_part["text"]
+        for key, value in raw_data.items():
+            if name_pattern.match(key) or desc_pattern.match(key):
+                entries[key] = value
 
         logger.debug(
-            "Extracted %d entries from The Vault quest file: %s", len(entries), path.name
+            "Extracted %d entries from The Vault quest file: %s",
+            len(entries),
+            path.name,
         )
         return entries
 
@@ -108,49 +105,7 @@ class TheVaultQuestHandler(ContentHandler):
         """
         target_path = output_path or path
 
-        parser = BaseParser.create_parser(path)
-        if parser is None:
-            logger.warning("No parser found for: %s", path)
-            return
-
-        try:
-            raw_data = await parser.parse()
-            data = dict(raw_data) # Make a copy/ensure it's dict
-        except Exception as e:
-            logger.error("Failed to parse %s: %s", path, e)
-            return
-
-        modified = False
-
-        if isinstance(data, dict) and "quests" in data and isinstance(data["quests"], list):
-            for i, quest in enumerate(data["quests"]):
-                if not isinstance(quest, dict):
-                    continue
-
-                # Apply quest name
-                name_key = f"quests[{i}].name"
-                if name_key in translations:
-                    quest["name"] = translations[name_key]
-                    modified = True
-
-                # Apply description
-                if "descriptionData" in quest and isinstance(quest["descriptionData"], dict):
-                    desc_data = quest["descriptionData"]
-                    if "description" in desc_data and isinstance(desc_data["description"], list):
-                        for j, desc_part in enumerate(desc_data["description"]):
-                            if not isinstance(desc_part, dict):
-                                continue
-                            
-                            text_key = f"quests[{i}].descriptionData.description[{j}].text"
-                            if text_key in translations:
-                                desc_part["text"] = translations[text_key]
-                                modified = True
-
-        if not modified:
-            logger.debug("No translations applied to: %s", path.name)
-            return
-
-        # Write output
+        # Ensure target directory exists
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         output_parser = BaseParser.create_parser(target_path, original_path=path)
@@ -159,7 +114,8 @@ class TheVaultQuestHandler(ContentHandler):
             return
 
         try:
-            await output_parser.dump(data)
+            # Use BaseParser.dump to handle unflattening
+            await output_parser.dump(translations)
             logger.debug("Applied translations to: %s", target_path.name)
         except Exception as e:
             logger.error("Failed to write %s: %s", target_path, e)
