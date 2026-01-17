@@ -98,6 +98,11 @@ class ScannerWorker(QThread):
         except Exception as e:
             logger.exception("Scanner error: %s", e)
             self.scanError.emit(str(e))
+        except BaseException as e:
+            # Catch fatal errors like SystemExit or KeyboardInterrupt to log them
+            logger.critical("Scanner worker critical failure: %s", e, exc_info=True)
+            self.scanError.emit(f"Critical Error: {e}")
+            raise  # Re-raise to ensure proper termination if needed
     
     def cancel(self) -> None:
         """Cancel the scanning operation."""

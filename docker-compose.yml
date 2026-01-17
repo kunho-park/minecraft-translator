@@ -18,6 +18,7 @@ services:
       - CURSEFORGE_API_KEY=${CURSEFORGE_API_KEY}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
       - ADMIN_DISCORD_IDS=${ADMIN_DISCORD_IDS}
+      - DISCORD_ADMIN_WEBHOOK_URL=${DISCORD_ADMIN_WEBHOOK_URL}
     volumes:
       - ./web/uploads:/app/uploads
       - ./web/prisma:/app/prisma

@@ -80,6 +80,22 @@
             "action": "Go to Review",
             "dismiss": "Later",
             "guide": "How to Apply Translation"
+        },
+        "sort": {
+            "label": "Sort by",
+            "latest": "Latest",
+            "downloads": "Downloads",
+            "rating": "Rating",
+            "recommended": "Recommended",
+            "version": "Version"
+        },
+        "filter": {
+            "version": "Select Version",
+            "allVersions": "All Versions"
+        },
+        "recommended": {
+            "badge": "Recommended",
+            "reason": "Best rating in latest version"
         }
     },
     "guide": {

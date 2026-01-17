@@ -80,6 +80,22 @@
             "action": "평가하러 가기",
             "dismiss": "나중에 하기",
             "guide": "번역 적용 방법 보기"
+        },
+        "sort": {
+            "label": "정렬",
+            "latest": "최신순",
+            "downloads": "다운로드순",
+            "rating": "평점순",
+            "recommended": "추천",
+            "version": "버전순"
+        },
+        "filter": {
+            "version": "버전 선택",
+            "allVersions": "전체 버전"
+        },
+        "recommended": {
+            "badge": "추천",
+            "reason": "최신 버전 중 최고 평점"
         }
     },
     "guide": {

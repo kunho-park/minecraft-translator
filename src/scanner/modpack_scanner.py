@@ -8,7 +8,7 @@ import re
 import zipfile
 from dataclasses import dataclass, field
 from glob import escape as glob_escape
-from glob import glob
+from glob import iglob
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -97,6 +97,7 @@ class ModpackScanner:
         self.progress_callback = progress_callback
         self.supported_extensions = BaseParser.get_supported_extensions()
         self.handler_registry = create_default_registry()
+        self.max_scan_files = 1000000  # Safety limit to prevent OOM
 
         logger.info(
             "Initialized scanner: %s -> %s",
@@ -206,63 +207,84 @@ class ModpackScanner:
         path = Path(file_path)
         if self.handler_registry.get_handler(path):
             return True
-            
+
         return False
+
+    def _safe_iglob(self, pattern: str, recursive: bool = True):
+        """Safely iterate over glob results."""
+        try:
+            return iglob(pattern, recursive=recursive)
+        except Exception as e:
+            logger.error("Glob failed for pattern %s: %s", pattern, e)
+            return []
 
     def _extract_all_zip_files(self, modpack_path: Path) -> None:
         """Extract ZIP files from modpack."""
         pattern = self._normalize_glob_path(modpack_path / "**" / "*.zip")
-        zip_files = glob(str(pattern), recursive=True)
+        logger.info("Searching for ZIP files with pattern: %s", pattern)
 
-        for zip_path in zip_files:
-            try:
-                self._extract_zip_file(zip_path)
-            except Exception as e:
-                logger.error("ZIP 파일 추출 실패 (%s): %s", zip_path, e)
+        try:
+            # Use iglob to avoid loading all paths into memory
+            for zip_path in self._safe_iglob(str(pattern), recursive=True):
+                try:
+                    self._extract_zip_file(zip_path)
+                except Exception as e:
+                    logger.error("ZIP 파일 추출 실패 (%s): %s", zip_path, e)
+        except Exception as e:
+            logger.error("ZIP search failed: %s", e)
 
     def _extract_zip_file(self, zip_path: str) -> None:
         """Extract a single ZIP file if relevant."""
-        zip_path_lower = zip_path.lower()
+        try:
+            zip_path_lower = zip_path.lower()
 
-        # Only process paxi or openloader ZIPs
-        if not ("paxi" in zip_path_lower or "openloader" in zip_path_lower):
-            return
+            # Only process paxi or openloader ZIPs
+            if not ("paxi" in zip_path_lower or "openloader" in zip_path_lower):
+                return
 
-        extract_dir = zip_path + ".zip_extracted"
-        if os.path.exists(extract_dir):
-            return
+            extract_dir = zip_path + ".zip_extracted"
+            if os.path.exists(extract_dir):
+                return
 
-        os.makedirs(extract_dir, exist_ok=True)
-        with zipfile.ZipFile(zip_path, "r") as zf:
-            logger.info("ZIP 파일 추출 중: %s", zip_path)
-            zf.extractall(extract_dir)
+            os.makedirs(extract_dir, exist_ok=True)
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                logger.info("ZIP 파일 추출 중: %s", zip_path)
+                zf.extractall(extract_dir)
+        except Exception as e:
+            logger.error("Failed to extract zip file %s: %s", zip_path, e)
 
     def _load_config_files(self, modpack_path: Path, result: ScanResult) -> None:
         """Load translation files from config folder (excluding ftbquests)."""
         pattern = self._normalize_glob_path(modpack_path / "config" / "**" / "*.*")
-        files = glob(str(pattern), recursive=True)
+        logger.info("Scanning config files: %s", pattern)
 
-        for file_path in files:
-            if "ftbquests" in file_path.lower():
-                continue
-            if self._is_translation_file(file_path):
-                result.translation_files.append(
-                    TranslationFile(
-                        input_path=file_path,
-                        file_type="config",
-                        category="Configuration",
-                    )
-                )
+        try:
+            for file_path in self._safe_iglob(str(pattern), recursive=True):
+                if len(result.translation_files) >= self.max_scan_files:
+                    logger.warning("Max file limit reached during config scan")
+                    break
+
+                try:
+                    if "ftbquests" in file_path.lower():
+                        continue
+                    if self._is_translation_file(file_path):
+                        result.translation_files.append(
+                            TranslationFile(
+                                input_path=file_path,
+                                file_type="config",
+                                category="Configuration",
+                            )
+                        )
+                except Exception as e:
+                    logger.debug("Failed to process config file %s: %s", file_path, e)
+        except Exception as e:
+            logger.error("Config scan failed: %s", e)
 
         count = len([f for f in result.translation_files if f.file_type == "config"])
         logger.info("config 폴더에서 %d개 파일 발견", count)
 
     def _load_ftbquests_files(self, modpack_path: Path, result: ScanResult) -> None:
-        """Load translation files from ftbquests folder.
-
-        Only SNBT and NBT files are classified as ftbquests.
-        JSON files (e.g., en_us.json) will be handled by Lang handler.
-        """
+        """Load translation files from ftbquests folder."""
         search_paths = [modpack_path / "config" / "ftbquests"]
         ftbquests_extensions = (".snbt", ".nbt")
 
@@ -270,18 +292,31 @@ class ModpackScanner:
             if not path.is_dir():
                 continue
             pattern = self._normalize_glob_path(path / "**" / "*.*")
-            files = glob(str(pattern), recursive=True)
-            for file_path in files:
-                # Only accept .snbt and .nbt files for ftbquests
-                ext = os.path.splitext(file_path)[1].lower()
-                if ext in ftbquests_extensions and self._is_translation_file(file_path):
-                    result.translation_files.append(
-                        TranslationFile(
-                            input_path=file_path,
-                            file_type="ftbquests",
-                            category="FTB Quests",
-                        )
-                    )
+            logger.info("Scanning FTB Quests: %s", pattern)
+
+            try:
+                for file_path in self._safe_iglob(str(pattern), recursive=True):
+                    if len(result.translation_files) >= self.max_scan_files:
+                        logger.warning("Max file limit reached during FTB scan")
+                        break
+
+                    try:
+                        # Only accept .snbt and .nbt files for ftbquests
+                        ext = os.path.splitext(file_path)[1].lower()
+                        if ext in ftbquests_extensions and self._is_translation_file(
+                            file_path
+                        ):
+                            result.translation_files.append(
+                                TranslationFile(
+                                    input_path=file_path,
+                                    file_type="ftbquests",
+                                    category="FTB Quests",
+                                )
+                            )
+                    except Exception as e:
+                        logger.debug("Failed to process FTB file %s: %s", file_path, e)
+            except Exception as e:
+                logger.error("FTB Quests scan failed: %s", e)
 
         count = len([f for f in result.translation_files if f.file_type == "ftbquests"])
         logger.info("ftbquests 폴더에서 %d개 파일 발견 (.snbt, .nbt)", count)
@@ -289,17 +324,27 @@ class ModpackScanner:
     def _load_kubejs_files(self, modpack_path: Path, result: ScanResult) -> None:
         """Load translation files from kubejs folder."""
         pattern = self._normalize_glob_path(modpack_path / "kubejs" / "**" / "*.*")
-        files = glob(str(pattern), recursive=True)
+        logger.info("Scanning KubeJS: %s", pattern)
 
-        for file_path in files:
-            if self._is_translation_file(file_path):
-                result.translation_files.append(
-                    TranslationFile(
-                        input_path=file_path,
-                        file_type="kubejs",
-                        category="KubeJS",
-                    )
-                )
+        try:
+            for file_path in self._safe_iglob(str(pattern), recursive=True):
+                if len(result.translation_files) >= self.max_scan_files:
+                    logger.warning("Max file limit reached during KubeJS scan")
+                    break
+
+                try:
+                    if self._is_translation_file(file_path):
+                        result.translation_files.append(
+                            TranslationFile(
+                                input_path=file_path,
+                                file_type="kubejs",
+                                category="KubeJS",
+                            )
+                        )
+                except Exception as e:
+                    logger.debug("Failed to process KubeJS file %s: %s", file_path, e)
+        except Exception as e:
+            logger.error("KubeJS scan failed: %s", e)
 
         count = len([f for f in result.translation_files if f.file_type == "kubejs"])
         logger.info("kubejs 폴더에서 %d개 파일 발견", count)
@@ -309,17 +354,29 @@ class ModpackScanner:
         pattern = self._normalize_glob_path(
             modpack_path / "patchouli_books" / "**" / "*.*"
         )
-        files = glob(str(pattern), recursive=True)
+        logger.info("Scanning Patchouli: %s", pattern)
 
-        for file_path in files:
-            if self._is_translation_file(file_path):
-                result.translation_files.append(
-                    TranslationFile(
-                        input_path=file_path,
-                        file_type="patchouli",
-                        category="Patchouli Books",
+        try:
+            for file_path in self._safe_iglob(str(pattern), recursive=True):
+                if len(result.translation_files) >= self.max_scan_files:
+                    logger.warning("Max file limit reached during Patchouli scan")
+                    break
+
+                try:
+                    if self._is_translation_file(file_path):
+                        result.translation_files.append(
+                            TranslationFile(
+                                input_path=file_path,
+                                file_type="patchouli",
+                                category="Patchouli Books",
+                            )
+                        )
+                except Exception as e:
+                    logger.debug(
+                        "Failed to process Patchouli file %s: %s", file_path, e
                     )
-                )
+        except Exception as e:
+            logger.error("Patchouli scan failed: %s", e)
 
         count = len([f for f in result.translation_files if f.file_type == "patchouli"])
         logger.info("patchouli 폴더에서 %d개 파일 발견", count)
@@ -328,17 +385,29 @@ class ModpackScanner:
         """Load translation files from resourcepacks and datapacks folders."""
         for folder in ["resourcepacks", "datapacks"]:
             pattern = self._normalize_glob_path(modpack_path / folder / "**" / "*.*")
-            files = glob(str(pattern), recursive=True)
+            logger.info("Scanning %s: %s", folder, pattern)
 
-            for file_path in files:
-                if self._is_translation_file(file_path):
-                    result.translation_files.append(
-                        TranslationFile(
-                            input_path=file_path,
-                            file_type=folder,
-                            category="Resource/Data Packs",
+            try:
+                for file_path in self._safe_iglob(str(pattern), recursive=True):
+                    if len(result.translation_files) >= self.max_scan_files:
+                        logger.warning("Max file limit reached during %s scan", folder)
+                        break
+
+                    try:
+                        if self._is_translation_file(file_path):
+                            result.translation_files.append(
+                                TranslationFile(
+                                    input_path=file_path,
+                                    file_type=folder,
+                                    category="Resource/Data Packs",
+                                )
+                            )
+                    except Exception as e:
+                        logger.debug(
+                            "Failed to process resource pack file %s: %s", file_path, e
                         )
-                    )
+            except Exception as e:
+                logger.error("%s scan failed: %s", folder, e)
 
         count = len(
             [
@@ -352,18 +421,25 @@ class ModpackScanner:
     def _load_mod_files(self, modpack_path: Path, result: ScanResult) -> None:
         """Load translation files from mods JAR files."""
         pattern = self._normalize_glob_path(modpack_path / "mods" / "*.jar")
-        jar_files = glob(str(pattern))
+        logger.info("Scanning Mods: %s", pattern)
 
-        for jar_path in jar_files:
-            try:
-                self._extract_from_jar(modpack_path, jar_path, result)
-            except Exception as e:
-                logger.error("JAR 파일 처리 실패 (%s): %s", jar_path, e)
+        try:
+            jar_files_found = 0
+            for jar_path in self._safe_iglob(str(pattern)):
+                jar_files_found += 1
+                try:
+                    self._extract_from_jar(modpack_path, jar_path, result)
+                except Exception as e:
+                    logger.error("JAR 파일 처리 실패 (%s): %s", jar_path, e)
 
-        count = len([f for f in result.translation_files if f.file_type == "mod"])
-        logger.info(
-            "mods 폴더에서 %d개 JAR 파일의 %d개 번역 파일 발견", len(jar_files), count
-        )
+            count = len([f for f in result.translation_files if f.file_type == "mod"])
+            logger.info(
+                "mods 폴더에서 %d개 JAR 파일의 %d개 번역 파일 발견",
+                jar_files_found,
+                count,
+            )
+        except Exception as e:
+            logger.error("Mod scan failed: %s", e)
 
     def _extract_from_jar(
         self, modpack_path: Path, jar_path: str, result: ScanResult
@@ -403,7 +479,7 @@ class ModpackScanner:
 
         if ext not in self.supported_extensions:
             return False
-        
+
         # Exclude non-translatable directories
         excluded_dirs = [
             "/recipes/",
@@ -423,7 +499,7 @@ class ModpackScanner:
             "\\dimension\\",
             "\\dimension_type\\",
         ]
-        
+
         for excluded in excluded_dirs:
             if excluded in entry_lower:
                 return False

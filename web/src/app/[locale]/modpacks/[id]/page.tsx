@@ -8,30 +8,15 @@ import type { Metadata, ResolvingMetadata } from "next";
 // Force dynamic rendering (no static generation)
 export const dynamic = "force-dynamic";
 
-import TranslationDownloadActions from "@/components/TranslationDownloadActions";
 import {
   Download,
   ExternalLink,
   Search,
   User,
   Calendar,
-  Check,
-  X,
-  MessageSquare,
-  Star,
-  ThermometerSun,
-  Layers,
-  BookOpen,
-  CheckCircle,
-  Bot,
-  PenLine,
-  BarChart3,
-  FileText,
-  Hash,
-  Clock,
-  Cpu,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
+import TranslationList from "@/components/TranslationList";
 
 interface ModpackDetailPageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -149,6 +134,11 @@ export default async function ModpackDetailPage({
     reviewStats.map((r) => [r.packId, { avgRating: r._avg.rating || 0 }])
   );
 
+  const reviewStatsObj: Record<string, { avgRating: number }> = {};
+  reviewStatsMap.forEach((v, k) => {
+    reviewStatsObj[k] = v;
+  });
+
   // Get works count
   const worksCount = await prisma.review.groupBy({
     by: ["packId", "works"],
@@ -169,6 +159,11 @@ export default async function ModpackDetailPage({
       current.notWorks = w._count;
     }
     worksMap.set(w.packId, current);
+  });
+
+  const worksStatsObj: Record<string, { works: number; notWorks: number }> = {};
+  worksMap.forEach((v, k) => {
+    worksStatsObj[k] = v;
   });
 
   const gameVersions = modpack.gameVersions
@@ -280,210 +275,16 @@ export default async function ModpackDetailPage({
         </div>
       </div>
 
-      {/* Translations */}
-      <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-6">
-        {t("modpack.translations")}
-      </h2>
-
-      {modpack.translationPacks.length > 0 ? (
-        <div className="space-y-6">
-          {modpack.translationPacks.map((pack) => {
-            const stats = reviewStatsMap.get(pack.id);
-            const works = worksMap.get(pack.id) || { works: 0, notWorks: 0 };
-
-            return (
-              <div key={pack.id} className="card p-6">
-                <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Translation Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className="badge">
-                        {t(`languages.${pack.sourceLang}` as never)} →{" "}
-                        {t(`languages.${pack.targetLang}` as never)}
-                      </span>
-                      {pack.user && (
-                        <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                          {pack.user.avatar ? (
-                            <Image
-                              src={pack.user.avatar}
-                              alt={pack.user.name}
-                              width={20}
-                              height={20}
-                              className="w-5 h-5 rounded-full"
-                            />
-                          ) : (
-                            <User className="w-4 h-4" />
-                          )}
-                          {pack.user.name}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Stats row */}
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-[var(--text-muted)] mb-4">
-                      {stats && (
-                        <span className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-500" />
-                          {stats.avgRating.toFixed(1)}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1 text-[var(--status-success)]">
-                        <Check className="w-4 h-4" />
-                        {works.works} {t("review.works.yes")}
-                      </span>
-                      <span className="flex items-center gap-1 text-[var(--status-error)]">
-                        <X className="w-4 h-4" />
-                        {works.notWorks} {t("review.works.no")}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MessageSquare className="w-4 h-4" />
-                        {pack._count.reviews} {t("review.title")}
-                      </span>
-                    </div>
-
-                    {/* Translation Pack Details (Flattened - no versions) */}
-                    <div className="p-4 rounded-lg bg-[var(--bg-secondary)]">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-medium text-[var(--text-primary)]">
-                              {pack.modpackVersion}
-                            </span>
-                            <span className="text-xs text-[var(--text-muted)]">
-                              {new Date(pack.createdAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-3 text-xs text-[var(--text-muted)]">
-                            {/* Translation Type Badge */}
-                            {pack.isManualTranslation ? (
-                              <span className="flex items-center gap-1 text-blue-400">
-                                <PenLine className="w-3 h-3" />
-                                {t("translation.metadata.manualTranslation")}
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 text-purple-400">
-                                <Bot className="w-3 h-3" />
-                                {t("translation.metadata.aiTranslation")}
-                              </span>
-                            )}
-                            {/* AI-specific metadata */}
-                            {!pack.isManualTranslation && pack.llmModel && (
-                              <span className="flex items-center gap-1">
-                                <ThermometerSun className="w-3 h-3" />
-                                {pack.llmModel}
-                                {pack.temperature !== null &&
-                                  ` (${pack.temperature})`}
-                              </span>
-                            )}
-                            {!pack.isManualTranslation && pack.batchSize && (
-                              <span className="flex items-center gap-1">
-                                <Layers className="w-3 h-3" />
-                                Batch: {pack.batchSize}
-                              </span>
-                            )}
-                            {!pack.isManualTranslation && pack.usedGlossary && (
-                              <span className="flex items-center gap-1 text-[var(--accent-primary)]">
-                                <BookOpen className="w-3 h-3" />
-                                {t("translation.metadata.usedGlossary")}
-                              </span>
-                            )}
-                            {pack.reviewed && (
-                              <span className="flex items-center gap-1 text-[var(--status-success)]">
-                                <CheckCircle className="w-3 h-3" />
-                                {t("translation.metadata.reviewed")}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Translation Stats - 번역 통계가 있는 경우에만 표시 */}
-                          {(pack.fileCount !== null || pack.totalEntries !== null || pack.totalTokens !== null || pack.durationSeconds !== null) && (
-                            <div className="mt-3 pt-3 border-t border-[var(--border-secondary)]">
-                              <div className="flex items-center gap-2 mb-2">
-                                <BarChart3 className="w-3 h-3 text-[var(--accent-primary)]" />
-                                <span className="text-xs font-medium text-[var(--text-secondary)]">
-                                  {t("translation.stats.title")}
-                                </span>
-                              </div>
-                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-muted)]">
-                                {pack.fileCount !== null && (
-                                  <span className="flex items-center gap-1">
-                                    <FileText className="w-3 h-3" />
-                                    {t("translation.stats.fileCount")}: {pack.fileCount.toLocaleString()}
-                                  </span>
-                                )}
-                                {pack.totalEntries !== null && (
-                                  <span className="flex items-center gap-1">
-                                    <Hash className="w-3 h-3" />
-                                    {t("translation.stats.totalEntries")}: {pack.totalEntries.toLocaleString()}
-                                  </span>
-                                )}
-                                {pack.translatedEntries !== null && pack.totalEntries !== null && (
-                                  <span className="flex items-center gap-1 text-[var(--status-success)]">
-                                    <Check className="w-3 h-3" />
-                                    {t("translation.stats.translatedEntries")}: {pack.translatedEntries.toLocaleString()}
-                                    {" "}({((pack.translatedEntries / pack.totalEntries) * 100).toFixed(1)}%)
-                                  </span>
-                                )}
-                                {pack.durationSeconds !== null && (
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    {t("translation.stats.duration")}: {t("translation.stats.durationFormat", {
-                                      minutes: Math.floor(pack.durationSeconds / 60),
-                                      seconds: Math.round(pack.durationSeconds % 60)
-                                    })}
-                                  </span>
-                                )}
-                                {pack.totalTokens !== null && (
-                                  <span className="flex items-center gap-1">
-                                    <Cpu className="w-3 h-3" />
-                                    {t("translation.stats.totalTokens")}: {pack.totalTokens.toLocaleString()}
-                                    {pack.inputTokens !== null && pack.outputTokens !== null && (
-                                      <span className="text-[var(--text-muted)]">
-                                        ({pack.inputTokens.toLocaleString()} / {pack.outputTokens.toLocaleString()})
-                                      </span>
-                                    )}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Download buttons */}
-                        <TranslationDownloadActions
-                          packId={pack.id}
-                          modpackId={modpack.id}
-                          hasResourcePack={!!pack.resourcePackPath}
-                          hasOverride={!!pack.overrideFilePath}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Write review link */}
-                <div className="mt-4 pt-4 border-t border-[var(--border-secondary)]">
-                  <Link
-                    href={`/modpacks/${modpack.id}/review/${pack.id}`}
-                    className="text-sm text-[var(--accent-primary)] hover:text-[var(--accent-hover)] transition-colors"
-                  >
-                    {t("review.writeReview")} →
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-16 glass rounded-xl">
-          <p className="text-[var(--text-muted)] text-lg mb-4">
-            {t("modpack.noTranslations")}
-          </p>
-          <Link href={`/upload?modpack=${modpack.curseforgeId}`}>
-            <Button>{t("modpack.uploadTranslation")}</Button>
-          </Link>
-        </div>
-      )}
+      <TranslationList
+        initialPacks={modpack.translationPacks.map((pack) => ({
+          ...pack,
+          createdAt: pack.createdAt.toISOString(),
+        }))}
+        reviewStats={reviewStatsObj}
+        worksStats={worksStatsObj}
+        modpackId={modpack.id}
+        modpackCurseforgeId={modpack.curseforgeId}
+      />
     </div>
   );
 }

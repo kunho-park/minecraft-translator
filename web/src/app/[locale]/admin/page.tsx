@@ -48,6 +48,12 @@ interface Translation {
     temperature: number | null;
     batchSize: number | null;
     fileCount: number | null;
+    totalEntries: number | null;
+    translatedEntries: number | null;
+    inputTokens: number | null;
+    outputTokens: number | null;
+    totalTokens: number | null;
+    durationSeconds: number | null;
     usedGlossary: boolean;
     reviewed: boolean;
     downloadCount: number;
@@ -437,13 +443,53 @@ export default function AdminPage() {
                                                         Batch: {item.batchSize}
                                                     </span>
                                                 )}
-                                                {item.fileCount && (
-                                                    <span className="flex items-center gap-1 text-xs bg-[var(--bg-tertiary)] px-2 py-0.5 rounded text-[var(--text-secondary)]">
-                                                        <FileText className="w-3 h-3" />
-                                                        Files: {item.fileCount}
-                                                    </span>
-                                                )}
                                             </div>
+
+                                            {/* Translation Stats */}
+                                            {(item.fileCount !== null || item.totalEntries !== null || item.totalTokens !== null || item.durationSeconds !== null) && (
+                                                <div className="mt-3 p-3 bg-[var(--bg-secondary)] rounded-lg text-xs text-[var(--text-muted)] space-y-1">
+                                                    <div className="font-semibold text-[var(--text-primary)] mb-2">번역 통계</div>
+                                                    {item.fileCount !== null && (
+                                                        <div className="flex items-center gap-2">
+                                                            <FileText className="w-3 h-3" />
+                                                            파일 수: {item.fileCount.toLocaleString()}
+                                                        </div>
+                                                    )}
+                                                    {item.totalEntries !== null && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Hash className="w-3 h-3" />
+                                                            전체 항목: {item.totalEntries.toLocaleString()}
+                                                        </div>
+                                                    )}
+                                                    {item.translatedEntries !== null && item.totalEntries !== null && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Check className="w-3 h-3 text-[var(--status-success)]" />
+                                                            <span className="text-[var(--status-success)]">
+                                                                번역된 항목: {item.translatedEntries.toLocaleString()} ({((item.translatedEntries / item.totalEntries) * 100).toFixed(1)}%)
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {item.durationSeconds !== null && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Calendar className="w-3 h-3" />
+                                                            소요 시간: {Math.floor(item.durationSeconds / 60)}분 {Math.round(item.durationSeconds % 60)}초
+                                                        </div>
+                                                    )}
+                                                    {item.totalTokens !== null && (
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <div className="flex items-center gap-2">
+                                                                <Cpu className="w-3 h-3" />
+                                                                총 토큰: {item.totalTokens.toLocaleString()}
+                                                            </div>
+                                                            {item.inputTokens !== null && item.outputTokens !== null && (
+                                                                <div className="pl-5 opacity-75">
+                                                                    ({item.inputTokens.toLocaleString()} / {item.outputTokens.toLocaleString()})
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
