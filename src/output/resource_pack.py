@@ -337,6 +337,7 @@ async def generate_outputs(
     modpack_root: Path | str,
     pack_config: ResourcePackConfig | None = None,
     create_zip: bool = True,
+    progress_callback: object | None = None,
 ) -> GenerationResult:
     """Convenience function to generate all outputs.
 
@@ -346,6 +347,7 @@ async def generate_outputs(
         modpack_root: Modpack root directory.
         pack_config: Resource pack configuration.
         create_zip: Whether to zip the outputs.
+        progress_callback: Optional progress callback.
 
     Returns:
         Generation result.
@@ -409,7 +411,7 @@ async def generate_outputs(
     if jar_mod_tasks:
         jar_mod_gen = JarModGenerator()
         jar_mod_paths = await jar_mod_gen.generate(
-            jar_mod_tasks, output_dir, modpack_root
+            jar_mod_tasks, output_dir, modpack_root, progress_callback
         )
         result.jar_mod_paths = jar_mod_paths
         result.files_generated += len(jar_mod_paths)

@@ -56,6 +56,7 @@ class GlossaryBuilder:
         source_locale: str = "en_us",
         target_locale: str = "ko_kr",
         progress_callback: object | None = None,
+        cancel_check: object | None = None,
     ) -> None:
         """Initialize the glossary builder.
 
@@ -64,11 +65,13 @@ class GlossaryBuilder:
             source_locale: Source language locale code.
             target_locale: Target language locale code.
             progress_callback: Optional callback for progress updates.
+            cancel_check: Optional callable to check for cancellation.
         """
         self.llm_client = llm_client
         self.source_locale = source_locale
         self.target_locale = target_locale
         self.progress_callback = progress_callback
+        self.cancel_check = cancel_check
 
         # Load vanilla glossary if available
         self.vanilla_glossary = self._load_vanilla_glossary()
@@ -359,6 +362,12 @@ Suggest style guidelines based on the text structure.
                 if batch is None:
                     queue.task_done()
                     break
+
+                # Check cancellation
+                if self.cancel_check and self.cancel_check():  # type: ignore[misc]
+                    queue.task_done()
+                    continue
+
                 try:
                     result = await self._extract_from_paired_batch(batch)
                     results.append(result)
@@ -551,6 +560,12 @@ Suggest style guidelines based on the text structure.
                 if batch is None:
                     queue.task_done()
                     break
+
+                # Check cancellation
+                if self.cancel_check and self.cancel_check():  # type: ignore[misc]
+                    queue.task_done()
+                    continue
+
                 try:
                     result = await self._extract_from_english_batch(batch)
                     results.append(result)

@@ -27,6 +27,7 @@ class TranslationWorker(QThread):
     progressUpdate = Signal(str, int, int, dict)  # message, current, total, stats
     translationComplete = Signal(object)  # PipelineResult
     translationError = Signal(str)  # error message
+    translationCancelled = Signal()
 
     def __init__(
         self,
@@ -86,7 +87,9 @@ class TranslationWorker(QThread):
 
             # Create pipeline with progress callback
             pipeline = TranslationPipeline(
-                pipeline_config, progress_callback=self._emit_progress_throttled
+                pipeline_config,
+                progress_callback=self._emit_progress_throttled,
+                cancel_check=lambda: self._is_cancelled,
             )
 
             # Run pipeline in event loop
@@ -120,6 +123,7 @@ class TranslationWorker(QThread):
                     )
 
                 if self._is_cancelled:
+                    self.translationCancelled.emit()
                     return
 
                 self.translationComplete.emit(result)

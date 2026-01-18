@@ -46,6 +46,7 @@ class JarModGenerator:
         tasks: list[TranslationTask],
         output_dir: Path,
         modpack_root: Path,
+        progress_callback: object | None = None,
     ) -> list[Path]:
         """Generate modified JAR files.
 
@@ -53,6 +54,7 @@ class JarModGenerator:
             tasks: List of translation tasks.
             output_dir: Output directory.
             modpack_root: Original modpack root directory.
+            progress_callback: Optional callback(message, current, total, stats).
 
         Returns:
             List of generated JAR file paths.
@@ -80,10 +82,28 @@ class JarModGenerator:
 
         generated_files: list[Path] = []
 
+        total_jars = len(jar_tasks)
+        processed_jars = 0
+
         for jar_name, tasks in jar_tasks.items():
+            processed_jars += 1
+            if progress_callback:
+                progress_callback(
+                    f"JAR 파일 처리 중: {jar_name} ({processed_jars}/{total_jars})",
+                    processed_jars,
+                    total_jars,
+                    None,
+                )
+
             try:
                 jar_path = await self._process_jar(
-                    jar_name, tasks, mods_output_dir, modpack_root
+                    jar_name,
+                    tasks,
+                    mods_output_dir,
+                    modpack_root,
+                    progress_callback,
+                    processed_jars,
+                    total_jars,
                 )
                 if jar_path:
                     generated_files.append(jar_path)
@@ -115,6 +135,9 @@ class JarModGenerator:
         tasks: list[TranslationTask],
         output_dir: Path,
         modpack_root: Path,
+        progress_callback: object | None = None,
+        progress_current: int = 0,
+        progress_total: int = 0,
     ) -> Path | None:
         """Process a single JAR file.
 
@@ -216,7 +239,24 @@ class JarModGenerator:
                 ) as target_zip:
                     # Copy all files from source
                     injected_count = 0
-                    for item in source_zip.infolist():
+                    items = source_zip.infolist()
+                    total_items = len(items)
+
+                    for i, item in enumerate(items):
+                        if i % 500 == 0:
+                            import asyncio
+
+                            await asyncio.sleep(0)
+                            if progress_callback:
+                                # Show percent of current JAR
+                                percent = int((i / total_items) * 100)
+                                progress_callback(
+                                    f"JAR 파일 처리 중: {jar_name} ({percent}%)",
+                                    progress_current,
+                                    progress_total,
+                                    None,
+                                )
+
                         # Normalize filename to handle Windows paths in ZIPs
                         normalized_filename = item.filename.replace("\\", "/")
 

@@ -164,15 +164,18 @@ class TranslationPipeline:
         self,
         config: PipelineConfig | None = None,
         progress_callback: object | None = None,
+        cancel_check: object | None = None,
     ) -> None:
         """Initialize the pipeline.
 
         Args:
             config: Pipeline configuration.
             progress_callback: Optional callback(message, current, total, stats).
+            cancel_check: Optional callable to check for cancellation.
         """
         self.config = config or PipelineConfig()
         self.progress_callback = progress_callback
+        self.cancel_check = cancel_check
 
         # Initialize LLM client with token tracking
         llm_config = LLMConfig(
@@ -199,6 +202,7 @@ class TranslationPipeline:
             self.config.source_locale,
             self.config.target_locale,
             progress_callback=self.progress_callback,
+            cancel_check=self.cancel_check,
         )
         self.translator = BatchTranslator(
             self.llm_client,
@@ -359,6 +363,11 @@ class TranslationPipeline:
                 len(file_pairs),
             )
 
+            # Check cancellation
+            if self.cancel_check and self.cancel_check():
+                logger.info("Pipeline cancelled before glossary step")
+                return result
+
             # Step 2: Build or load glossary
             if glossary_path and Path(glossary_path).exists():
                 logger.info("Step 2: Loading existing glossary...")
@@ -410,6 +419,11 @@ class TranslationPipeline:
                 self.translator.update_glossary(result.glossary)
                 self.reviewer.update_glossary(result.glossary)
 
+            # Check cancellation
+            if self.cancel_check and self.cancel_check():
+                logger.info("Pipeline cancelled before task creation")
+                return result
+
             # Step 3: Create translation tasks
             logger.info("Step 3: Creating translation tasks...")
             self._report_progress(
@@ -418,6 +432,11 @@ class TranslationPipeline:
                 len(file_pairs),  # type: ignore[arg-type]
             )
             result.tasks = await self._create_tasks(file_pairs, result)  # type: ignore[arg-type]
+
+            # Check cancellation
+            if self.cancel_check and self.cancel_check():
+                logger.info("Pipeline cancelled before translation")
+                return result
 
             # Step 4: Translate
             logger.info("Step 4: Translating...")
@@ -530,6 +549,11 @@ class TranslationPipeline:
             #         },
             #     )
 
+            # Check cancellation
+            if self.cancel_check and self.cancel_check():
+                logger.info("Pipeline cancelled before validation")
+                return result
+
             # Step 5: Validate
             logger.info("Step 5: Validating translations...")
             self._report_progress(
@@ -543,6 +567,11 @@ class TranslationPipeline:
                 },
             )
             await self._validate_tasks(result.tasks)
+
+            # Check cancellation
+            if self.cancel_check and self.cancel_check():
+                logger.info("Pipeline cancelled before review")
+                return result
 
             # Step 6: Review (if enabled)
             if not self.config.skip_review:
@@ -570,6 +599,11 @@ class TranslationPipeline:
             else:
                 logger.info("Step 6: Skipping review (disabled)")
 
+            # Check cancellation
+            if self.cancel_check and self.cancel_check():
+                logger.info("Pipeline cancelled before output generation")
+                return result
+
             # Step 7: Generate outputs
             logger.info("Step 7: Generating outputs...")
             self._report_progress(
@@ -594,6 +628,7 @@ class TranslationPipeline:
                 modpack_path,
                 pack_config,
                 create_zip=self.config.create_zip,
+                progress_callback=self._report_progress,
             )
 
             logger.info("Pipeline completed successfully!")
@@ -1059,6 +1094,7 @@ class TranslationPipeline:
             modpack_path,
             pack_config,
             create_zip=self.config.create_zip,
+            progress_callback=self._report_progress,
         )
 
         logger.info("Output regeneration completed")

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
@@ -65,6 +65,7 @@ class MainWindow(QMainWindow):
 
         # Check for updates on startup
         from PySide6.QtCore import QTimer
+
         QTimer.singleShot(1000, lambda: self.check_updates(manual=False))
 
     def _create_menu_bar(self) -> None:
@@ -362,16 +363,20 @@ class MainWindow(QMainWindow):
         from .workers.translation_worker import TranslationWorker
 
         modpack_path = Path(str(self.state["modpack_path"]))
-        
+
         # Create output directory with modpack name and timestamp
         modpack_name = str(self.state.get("modpack_name", modpack_path.name))
         # Sanitize modpack name for filesystem
-        safe_modpack_name = "".join(c for c in modpack_name if c.isalnum() or c in (' ', '-', '_')).strip()
+        safe_modpack_name = "".join(
+            c for c in modpack_name if c.isalnum() or c in (" ", "-", "_")
+        ).strip()
         if not safe_modpack_name:
             safe_modpack_name = "modpack"
 
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        output_path = modpack_path.parent / "translation_output" / safe_modpack_name / timestamp
+        output_path = (
+            modpack_path.parent / "translation_output" / safe_modpack_name / timestamp
+        )
         output_path.mkdir(parents=True, exist_ok=True)
 
         self.state["output_path"] = output_path
@@ -387,7 +392,11 @@ class MainWindow(QMainWindow):
         self.translation_worker.translationComplete.connect(
             self._on_translation_complete
         )
+        self.translation_worker.translationCancelled.connect(
+            self._on_translation_cancelled
+        )
         self.translation_worker.translationError.connect(self._on_translation_error)
+        self.progress_view.stopRequested.connect(self.translation_worker.cancel)
 
         # Move to progress view
         self.go_to_step(4)
@@ -507,6 +516,12 @@ class MainWindow(QMainWindow):
             self.completion_view.set_result(pipeline_result, output_path)
 
         self.go_to_step(6)  # Upload view
+
+    def _on_translation_cancelled(self) -> None:
+        """Handle translation cancellation."""
+        logger.info("Translation cancelled by user")
+        # Go back to main screen (Welcome View)
+        self.go_to_step(0)
 
     def _on_translation_error(self, error: str) -> None:
         """Handle translation error.
@@ -676,8 +691,9 @@ class MainWindow(QMainWindow):
         Args:
             manual: Whether this is a manual check initiated by user
         """
-        from .workers.update_worker import UpdateWorker
         from qfluentwidgets import InfoBar, InfoBarPosition
+
+        from .workers.update_worker import UpdateWorker
 
         if manual:
             InfoBar.info(
@@ -687,16 +703,20 @@ class MainWindow(QMainWindow):
                 isClosable=False,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=2000,
-                parent=self
+                parent=self,
             )
 
         self.update_worker = UpdateWorker()
         self.update_worker.updateAvailable.connect(self._on_update_available)
         self.update_worker.noUpdate.connect(lambda: self._on_no_update(manual))
-        self.update_worker.updateError.connect(lambda e: self._on_update_error(e, manual))
+        self.update_worker.updateError.connect(
+            lambda e: self._on_update_error(e, manual)
+        )
         self.update_worker.start()
 
-    def _on_update_available(self, version: str, release_notes: str, download_url: str) -> None:
+    def _on_update_available(
+        self, version: str, release_notes: str, download_url: str
+    ) -> None:
         """Handle update available.
 
         Args:
@@ -705,7 +725,7 @@ class MainWindow(QMainWindow):
             download_url: Download URL
         """
         from .widgets.update_dialog import UpdateDialog
-        
+
         dialog = UpdateDialog(version, release_notes, download_url, self)
         dialog.show()
 
@@ -725,7 +745,7 @@ class MainWindow(QMainWindow):
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=3000,
-                parent=self
+                parent=self,
             )
 
     def _on_update_error(self, error: str, manual: bool) -> None:
@@ -745,5 +765,5 @@ class MainWindow(QMainWindow):
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=5000,
-                parent=self
+                parent=self,
             )

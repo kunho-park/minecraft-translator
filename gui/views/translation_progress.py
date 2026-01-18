@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QTextEdit, QVBoxLayout, QWidget
 from qfluentwidgets import (
     BodyLabel,
@@ -18,8 +18,6 @@ from qfluentwidgets import (
     SubtitleLabel,
 )
 
-from ..widgets.stats_card import TranslationStatsCard
-
 if TYPE_CHECKING:
     from ..app import MainWindow
 
@@ -28,22 +26,25 @@ logger = logging.getLogger(__name__)
 
 class TranslationProgressView(QWidget):
     """View for showing translation progress in real-time."""
-    
+
+    stopRequested = Signal()
+
     def __init__(self, main_window: MainWindow) -> None:
         """Initialize translation progress view.
-        
+
         Args:
             main_window: Main application window
         """
         super().__init__()
         self.main_window = main_window
         self._init_ui()
-    
+
     def _init_ui(self) -> None:
         """Initialize UI components."""
         from ..i18n import get_translator
+
         t = get_translator()
-        
+
         layout = QVBoxLayout(self)
         layout.setSpacing(25)
         layout.setContentsMargins(50, 30, 50, 30)
@@ -51,14 +52,14 @@ class TranslationProgressView(QWidget):
         # Title and status
         header_layout = QVBoxLayout()
         header_layout.setSpacing(10)
-        
+
         title = SubtitleLabel(t.t("translation_progress.title"))
         header_layout.addWidget(title)
 
         self.status_label = BodyLabel("준비 중...")
         self.status_label.setStyleSheet("color: #888888;")
         header_layout.addWidget(self.status_label)
-        
+
         layout.addLayout(header_layout)
 
         # Progress card
@@ -191,10 +192,11 @@ class TranslationProgressView(QWidget):
         button_layout.addStretch()
         self.stop_button = PushButton(t.t("translation_progress.stop"))
         self.stop_button.setFixedWidth(120)
+        self.stop_button.clicked.connect(self.stopRequested.emit)
         button_layout.addWidget(self.stop_button)
 
         layout.addLayout(button_layout)
-    
+
     def update_progress(
         self,
         message: str,
@@ -203,7 +205,7 @@ class TranslationProgressView(QWidget):
         stats: dict[str, object] | None = None,
     ) -> None:
         """Update progress display.
-        
+
         Args:
             message: Progress message
             current: Current progress
@@ -216,10 +218,10 @@ class TranslationProgressView(QWidget):
             self.progress_bar.setValue(percentage)
             self.progress_label.setText(f"{percentage}%")
             self.count_label.setText(f"{current:,} / {total:,}")
-        
+
         # Update status
         self.status_label.setText(message)
-        
+
         # Update stats
         if stats:
             if "total" in stats:
@@ -231,7 +233,9 @@ class TranslationProgressView(QWidget):
                 self.failed_value.setText(f"{failed:,}")
                 # Change color based on failure count
                 if failed > 0:
-                    self.failed_value.setStyleSheet("color: #FF4D4F; font-weight: bold;")
+                    self.failed_value.setStyleSheet(
+                        "color: #FF4D4F; font-weight: bold;"
+                    )
                 else:
                     self.failed_value.setStyleSheet("color: #888888;")
             if "success_rate" in stats:
@@ -241,14 +245,20 @@ class TranslationProgressView(QWidget):
                 try:
                     rate = float(rate_str.rstrip("%"))
                     if rate >= 95:
-                        self.rate_value.setStyleSheet("color: #00B578; font-weight: bold;")
+                        self.rate_value.setStyleSheet(
+                            "color: #00B578; font-weight: bold;"
+                        )
                     elif rate >= 80:
-                        self.rate_value.setStyleSheet("color: #1890FF; font-weight: bold;")
+                        self.rate_value.setStyleSheet(
+                            "color: #1890FF; font-weight: bold;"
+                        )
                     else:
-                        self.rate_value.setStyleSheet("color: #FF9800; font-weight: bold;")
+                        self.rate_value.setStyleSheet(
+                            "color: #FF9800; font-weight: bold;"
+                        )
                 except ValueError:
                     pass
-            
+
             # Update token usage
             if "input_tokens" in stats:
                 self.input_token_value.setText(f"{stats['input_tokens']:,}")
@@ -256,22 +266,24 @@ class TranslationProgressView(QWidget):
                 self.output_token_value.setText(f"{stats['output_tokens']:,}")
             if "total_tokens" in stats:
                 self.total_token_value.setText(f"{stats['total_tokens']:,}")
-        
+
         # Add to log with timestamp
         from datetime import datetime
+
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.log_text.append(f"[{timestamp}] {message}")
-        
+
         # Auto-scroll
         self.log_text.verticalScrollBar().setValue(
             self.log_text.verticalScrollBar().maximum()
         )
-    
+
     def complete(self) -> None:
         """Mark translation as complete."""
         from ..i18n import get_translator
+
         t = get_translator()
-        
+
         self.progress_bar.setValue(100)
         self.status_label.setText(t.t("completion.description"))
         self.stop_button.setText(t.t("common.next"))

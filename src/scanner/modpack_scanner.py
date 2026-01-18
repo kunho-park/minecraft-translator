@@ -138,7 +138,10 @@ class ModpackScanner:
         self._load_config_files(modpack_path, result)
 
         self._report_progress(
-            "The Vault 퀘스트 스캔 중...", 1, 7, "The Vault 퀘스트 파일을 스캔하고 있습니다..."
+            "The Vault 퀘스트 스캔 중...",
+            1,
+            7,
+            "The Vault 퀘스트 파일을 스캔하고 있습니다...",
         )
         self._load_the_vault_quest_files(modpack_path, result)
 
@@ -229,8 +232,20 @@ class ModpackScanner:
         logger.info("Searching for ZIP files with pattern: %s", pattern)
 
         try:
-            # Use iglob to avoid loading all paths into memory
-            for zip_path in self._safe_iglob(str(pattern), recursive=True):
+            # Get list for progress tracking
+            zip_files = list(self._safe_iglob(str(pattern), recursive=True))
+            total_zips = len(zip_files)
+
+            for i, zip_path in enumerate(zip_files):
+                if self.progress_callback:
+                    zip_name = os.path.basename(zip_path)
+                    self._report_progress(
+                        "ZIP 파일 추출 중...",
+                        0,
+                        7,
+                        f"압축 해제 중 ({i + 1}/{total_zips}): {zip_name}",
+                    )
+
                 try:
                     self._extract_zip_file(zip_path)
                 except Exception as e:
@@ -272,7 +287,10 @@ class ModpackScanner:
                 try:
                     if "ftbquests" in file_path.lower():
                         continue
-                    if "the_vault/quest" in file_path.lower() or "the_vault\\quest" in file_path.lower():
+                    if (
+                        "the_vault/quest" in file_path.lower()
+                        or "the_vault\\quest" in file_path.lower()
+                    ):
                         continue
                     if self._is_translation_file(file_path):
                         result.translation_files.append(
@@ -328,7 +346,9 @@ class ModpackScanner:
         count = len([f for f in result.translation_files if f.file_type == "ftbquests"])
         logger.info("ftbquests 폴더에서 %d개 파일 발견 (.snbt, .nbt)", count)
 
-    def _load_the_vault_quest_files(self, modpack_path: Path, result: ScanResult) -> None:
+    def _load_the_vault_quest_files(
+        self, modpack_path: Path, result: ScanResult
+    ) -> None:
         """Load translation files from the_vault/quest folder."""
         search_paths = [modpack_path / "config" / "the_vault" / "quest"]
 
@@ -341,7 +361,9 @@ class ModpackScanner:
             try:
                 for file_path in self._safe_iglob(str(pattern), recursive=True):
                     if len(result.translation_files) >= self.max_scan_files:
-                        logger.warning("Max file limit reached during The Vault Quest scan")
+                        logger.warning(
+                            "Max file limit reached during The Vault Quest scan"
+                        )
                         break
 
                     try:
@@ -354,11 +376,17 @@ class ModpackScanner:
                                 )
                             )
                     except Exception as e:
-                        logger.debug("Failed to process The Vault Quest file %s: %s", file_path, e)
+                        logger.debug(
+                            "Failed to process The Vault Quest file %s: %s",
+                            file_path,
+                            e,
+                        )
             except Exception as e:
                 logger.error("The Vault Quest scan failed: %s", e)
 
-        count = len([f for f in result.translation_files if f.file_type == "the_vault_quest"])
+        count = len(
+            [f for f in result.translation_files if f.file_type == "the_vault_quest"]
+        )
         logger.info("the_vault/quest 폴더에서 %d개 파일 발견", count)
 
     def _load_kubejs_files(self, modpack_path: Path, result: ScanResult) -> None:
@@ -464,9 +492,22 @@ class ModpackScanner:
         logger.info("Scanning Mods: %s", pattern)
 
         try:
+            jar_files = list(self._safe_iglob(str(pattern)))
+            total_jars = len(jar_files)
             jar_files_found = 0
-            for jar_path in self._safe_iglob(str(pattern)):
+
+            for i, jar_path in enumerate(jar_files):
                 jar_files_found += 1
+
+                if self.progress_callback:
+                    jar_name = os.path.basename(jar_path)
+                    self._report_progress(
+                        "JAR 파일 스캔 중...",
+                        6,
+                        7,
+                        f"JAR 파일 처리 중 ({i + 1}/{total_jars}): {jar_name}",
+                    )
+
                 try:
                     self._extract_from_jar(modpack_path, jar_path, result)
                 except Exception as e:

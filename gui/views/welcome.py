@@ -173,13 +173,28 @@ class WelcomeView(QWidget):
         layout.addLayout(cards_layout)
         layout.addStretch()
 
+        # Links layout
+        links_layout = QHBoxLayout()
+        links_layout.setSpacing(20)
+        links_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+
+        # Usage Guide link
+        self.guide_link = HyperlinkButton(
+            "https://github.com/kunho-park/minecraft-translator/blob/main/wiki/%EC%82%AC%EC%9A%A9%EB%B2%95.md",
+            "사용법 설명서",
+            self,
+        )
+        links_layout.addWidget(self.guide_link)
+
         # Discord link
         self.discord_link = HyperlinkButton(
             "https://discord.gg/UBkvjNgvYX",
             t.t("welcome.discord"),
             self,
         )
-        layout.addWidget(self.discord_link, alignment=Qt.AlignmentFlag.AlignHCenter)
+        links_layout.addWidget(self.discord_link)
+
+        layout.addLayout(links_layout)
 
     def _connect_signals(self) -> None:
         """Connect signals to slots."""
