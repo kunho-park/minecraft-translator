@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class TermRule(BaseModel):
@@ -40,6 +40,12 @@ class TermRule(BaseModel):
         default="",
         description="Additional notes about the term",
     )
+
+    @field_validator("aliases")
+    @classmethod
+    def sort_aliases(cls, v: list[str]) -> list[str]:
+        """Sort aliases for consistent deduplication."""
+        return sorted(list(set(v)))
 
 
 class ProperNounRule(BaseModel):
@@ -143,20 +149,29 @@ class Glossary(BaseModel):
         }
         existing_rules = {r.rule_name for r in self.formatting_rules}
 
-        # Add new items
-        new_terms = [
-            t
-            for t in other.term_rules
-            if (t.term_ko, tuple(t.aliases)) not in existing_terms
-        ]
-        new_nouns = [
-            n
-            for n in other.proper_noun_rules
-            if (n.source_like, n.preferred_ko) not in existing_nouns
-        ]
-        new_rules = [
-            r for r in other.formatting_rules if r.rule_name not in existing_rules
-        ]
+        # Lists for new items
+        new_terms: list[TermRule] = []
+        new_nouns: list[ProperNounRule] = []
+        new_rules: list[FormattingRule] = []
+
+        # Add new items with deduplication
+        for t in other.term_rules:
+            key = (t.term_ko, tuple(t.aliases))
+            if key not in existing_terms:
+                existing_terms.add(key)
+                new_terms.append(t)
+
+        for n in other.proper_noun_rules:
+            key = (n.source_like, n.preferred_ko)
+            if key not in existing_nouns:
+                existing_nouns.add(key)
+                new_nouns.append(n)
+
+        for r in other.formatting_rules:
+            key = r.rule_name
+            if key not in existing_rules:
+                existing_rules.add(key)
+                new_rules.append(r)
 
         return Glossary(
             version=self.version,
