@@ -28,8 +28,10 @@ export async function POST(request: NextRequest) {
         const version = formData.get("version") as string;
         const resourcePack = formData.get("resourcePack") as File | null;
         const overrideFile = formData.get("overrideFile") as File | null;
+        const resourcePackLink = formData.get("resourcePackLink") as string | null;
+        const overrideFileLink = formData.get("overrideFileLink") as string | null;
 
-        if (!mapId || !version || (!resourcePack && !overrideFile)) {
+        if (!mapId || !version || (!resourcePack && !overrideFile && !resourcePackLink && !overrideFileLink)) {
             return NextResponse.json(
                 { error: "Missing required fields" },
                 { status: 400 }
@@ -42,7 +44,9 @@ export async function POST(request: NextRequest) {
         let resourcePackUrl: string | null = null;
         let overrideFileUrl: string | null = null;
 
-        if (resourcePack) {
+        if (resourcePackLink) {
+            resourcePackUrl = resourcePackLink;
+        } else if (resourcePack) {
             const ext = resourcePack.name.split(".").pop() || "zip";
             const fileName = `${fileId}_resourcepack.${ext}`;
             const filePath = path.join(UPLOADS_DIR, fileName);
@@ -51,7 +55,9 @@ export async function POST(request: NextRequest) {
             resourcePackUrl = `maps/${fileName}`;
         }
 
-        if (overrideFile) {
+        if (overrideFileLink) {
+            overrideFileUrl = overrideFileLink;
+        } else if (overrideFile) {
             const ext = overrideFile.name.split(".").pop() || "zip";
             const fileName = `${fileId}_override.${ext}`;
             const filePath = path.join(UPLOADS_DIR, fileName);

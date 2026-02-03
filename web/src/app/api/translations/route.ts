@@ -21,12 +21,14 @@ async function ensureUploadsDir() {
 
 export async function POST(request: NextRequest) {
   try {
+    const formData = await request.formData();
+    const anonymous = formData.get("anonymous") === "true";
+
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session?.user && !anonymous) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const formData = await request.formData();
     const curseforgeId = formData.get("curseforgeId") as string;
     const modpackVersion = formData.get("modpackVersion") as string;
     const sourceLang = formData.get("sourceLang") as string || "en_us";
@@ -37,8 +39,11 @@ export async function POST(request: NextRequest) {
     const batchSize = formData.get("batchSize") as string | null;
     const usedGlossary = formData.get("usedGlossary") === "true";
     const reviewed = formData.get("reviewed") === "true";
+
     const resourcePack = formData.get("resourcePack") as File | null;
     const overrideFile = formData.get("overrideFile") as File | null;
+    const resourcePackLink = formData.get("resourcePackLink") as string | null;
+    const overrideFileLink = formData.get("overrideFileLink") as string | null;
 
     // 번역 통계 필드
     const fileCount = formData.get("fileCount") as string | null;
@@ -58,9 +63,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!resourcePack && !overrideFile) {
+    if (!resourcePack && !overrideFile && !resourcePackLink && !overrideFileLink) {
       return NextResponse.json(
-        { error: "At least one file is required" },
+        { error: "At least one file or link is required" },
         { status: 400 }
       );
     }
@@ -112,7 +117,9 @@ export async function POST(request: NextRequest) {
     let resourcePackPath: string | null = null;
     let overrideFilePath: string | null = null;
 
-    if (resourcePack) {
+    if (resourcePackLink) {
+      resourcePackPath = resourcePackLink;
+    } else if (resourcePack) {
       const rpFileName = `${packId}_resourcepack.zip`;
       const rpPath = path.join(packDir, rpFileName);
       const rpBuffer = Buffer.from(await resourcePack.arrayBuffer());
@@ -120,7 +127,9 @@ export async function POST(request: NextRequest) {
       resourcePackPath = `${packId}/${rpFileName}`;
     }
 
-    if (overrideFile) {
+    if (overrideFileLink) {
+      overrideFilePath = overrideFileLink;
+    } else if (overrideFile) {
       const ofFileName = `${packId}_override.zip`;
       const ofPath = path.join(packDir, ofFileName);
       const ofBuffer = Buffer.from(await overrideFile.arrayBuffer());
@@ -134,7 +143,7 @@ export async function POST(request: NextRequest) {
         id: packId,
         modpackId: modpack.id,
         modpackVersion,
-        userId: session.user.id,
+        userId: session?.user?.id || null, // Allow null for anonymous
         sourceLang,
         targetLang,
         status: "pending",
@@ -164,7 +173,7 @@ export async function POST(request: NextRequest) {
       modpackId: modpack.id,
       modpackName: modpack.name,
       modpackVersion: translationPack.modpackVersion,
-      uploaderName: session.user.name,
+      uploaderName: session?.user?.name || "Anonymous",
       sourceLang: translationPack.sourceLang,
       targetLang: translationPack.targetLang,
       isManualTranslation: translationPack.isManualTranslation,

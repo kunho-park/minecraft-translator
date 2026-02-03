@@ -18,6 +18,12 @@ from ..models import (
     TermRule,
 )
 from ..parsers import BaseParser
+from ..prompts import (
+    build_glossary_paired_system_prompt,
+    build_glossary_paired_user_prompt,
+    build_glossary_source_only_system_prompt,
+    build_glossary_source_only_user_prompt,
+)
 from ..utils import get_language_name
 
 if TYPE_CHECKING:
@@ -153,80 +159,16 @@ class GlossaryBuilder:
         source_lang = get_language_name(self.source_locale, "en")
         target_lang = get_language_name(self.target_locale, "en")
 
-        return f"""You are a Minecraft mod translation expert.
-Your task is to analyze the {source_lang}-{target_lang} translation corpus and extract rules for consistent translation.
-
-# Output Format
-Return a JSON object containing three lists: 'term_rules', 'proper_noun_rules', and 'formatting_rules'.
-
-# 1. Terminology Rules (term_rules)
-Extract specific game terms (items, blocks, entities, UI).
-- term_ko: The {target_lang} translation.
-- aliases: List of {source_lang} source terms mapped to this translation.
-- category: One of [item, block, ui, entity, effect, biome, other].
-- notes: Brief note on usage.
-
-# 2. Proper Noun Rules (proper_noun_rules)
-Extract specific names (places, characters, mods) that require consistent translation.
-- source_like: The original {source_lang} name.
-- preferred_ko: The preferred {target_lang} translation.
-- notes: Reasoning.
-
-# 3. Formatting Rules (formatting_rules)
-Extract general style guidelines (punctuation, placeholders, honorifics).
-- rule_name: Short, descriptive name of the rule.
-- description: Clear explanation of the rule.
-- examples: List of valid examples.
-
-# Constraints
-- Only extract rules clearly supported by the text.
-- Return empty lists if no rules are found for a category.
-"""
+        return build_glossary_paired_system_prompt(source_lang, target_lang)
 
     def _build_source_only_prompt(self) -> str:
         """Build system prompt for source-only extraction."""
         source_lang = get_language_name(self.source_locale, "en")
         target_lang = get_language_name(self.target_locale, "en")
 
-        # Language-specific guidance
-        lang_specific = ""
-        if self.target_locale.startswith("ko"):
-            lang_specific = """
-# Korean Translation Style Guide
-- Follow official Minecraft translations for items/blocks.
-- Preserve placeholders (%s, %d, etc.) and color codes (§, &).
-- Use proper particles (이/가, 을/를) handling.
-"""
-
-        return f"""You are a Minecraft mod translation expert.
-Your task is to analyze the {source_lang} text and propose rules for consistent {target_lang} translation.
-
-# Output Format
-Return a JSON object containing three lists: 'term_rules', 'proper_noun_rules', and 'formatting_rules'.
-
-# 1. Terminology Rules (term_rules)
-Identify game terms and suggest translations.
-- term_ko: Recommended {target_lang} translation.
-- aliases: List of {source_lang} source terms.
-- category: One of [item, block, ui, entity, effect, biome, other].
-
-# 2. Proper Noun Rules (proper_noun_rules)
-Identify proper nouns and suggest translations.
-- source_like: The {source_lang} proper noun.
-- preferred_ko: Recommended {target_lang} form (transliteration or translation).
-
-# 3. Formatting Rules (formatting_rules)
-Suggest style guidelines based on the text structure.
-- rule_name: Short name of the rule.
-- description: Clear explanation.
-- examples: Examples.
-
-{lang_specific}
-
-# Constraints
-- Only propose rules relevant to the text.
-- Return empty lists if uncertain.
-"""
+        return build_glossary_source_only_system_prompt(
+            source_lang, target_lang, self.target_locale
+        )
 
     async def build_from_pairs(
         self,
@@ -472,11 +414,7 @@ Suggest style guidelines based on the text structure.
         corpus_lines = [f"EN: {en}\nKO: {ko}" for en, ko in pairs]
         corpus_text = "\n---\n".join(corpus_lines)
 
-        prompt = f"""다음 번역 코퍼스를 분석하세요:
-
-{corpus_text}
-
-위 코퍼스에서 용어 규칙, 고유명사 규칙, 포맷팅 규칙을 추출하세요."""
+        prompt = build_glossary_paired_user_prompt(corpus_text)
 
         for attempt in range(max_retries + 1):
             try:
@@ -668,12 +606,7 @@ Suggest style guidelines based on the text structure.
         # Format texts for LLM
         texts_formatted = "\n---\n".join(texts)
 
-        prompt = f"""다음 영어 텍스트를 분석하세요:
-
-{texts_formatted}
-
-위 텍스트에서 마인크래프트 게임 용어, 고유명사를 식별하고,
-한국어 번역 시 일관성을 위한 규칙을 제안하세요."""
+        prompt = build_glossary_source_only_user_prompt(texts_formatted)
 
         for attempt in range(max_retries + 1):
             try:

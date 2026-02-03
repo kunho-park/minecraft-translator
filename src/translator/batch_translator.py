@@ -17,6 +17,7 @@ from src.models import (
     TranslationTask,
 )
 from src.models.glossary_filter import GlossaryFilter
+from src.prompts import build_translator_system_prompt, build_translator_user_prompt
 from src.utils import get_language_name
 
 from .placeholder import PlaceholderError, PlaceholderProtector, ProtectedText
@@ -38,31 +39,6 @@ class TranslationOutput(BaseModel):
         default_factory=dict,
         description="Mapping of keys to translated texts",
     )
-
-
-SYSTEM_PROMPT_TEMPLATE = """You are a Minecraft mod translation expert.
-Translate {source_lang} text to {target_lang}.
-
-## CRITICAL: Placeholder Protection Rules
-1. **NEVER translate or modify placeholders marked with ⟦PH_xxx⟧**
-2. **Copy placeholders EXACTLY as they appear** - including all characters between ⟦ and ⟧
-3. **Do NOT abbreviate**: ⟦PH_0_java_format⟧ must stay as ⟦PH_0_java_format⟧, NOT ⟦PH...⟧
-4. **Preserve placeholder position** in the translated text
-5. **Example**: 
-   - Input: "Kill the ⟦PH_0_named_placeholder⟧"
-   - Output: "⟦PH_0_named_placeholder⟧을(를) 처치하세요"
-   - WRONG: "⟦PH...⟧을(를) 처치하세요"
-
-## Translation Rules
-1. Translate game terminology consistently
-2. Use natural {target_lang} expressions
-{target_specific_rules}
-
-{glossary_context}
-
-## Output Format
-Return translations as a JSON dictionary.
-Keys must match input exactly, values should be translated {target_lang} text with **ALL placeholders preserved exactly**."""
 
 
 class BatchTranslator:
@@ -324,7 +300,7 @@ class BatchTranslator:
         texts_for_llm = {key: pt.protected for key, pt in protected_texts.items()}
 
         prompt = self._build_translation_prompt(texts_for_llm)
-        
+
         # Collect errors from previous attempts
         entry_errors = {
             entry.key: entry.previous_error
@@ -379,16 +355,7 @@ class BatchTranslator:
             Formatted prompt string.
         """
         target_lang = get_language_name(self.target_locale, "native")
-
-        lines = [f"Translate the following texts to {target_lang}:", ""]
-
-        for key, text in texts.items():
-            lines.append(f'"{key}": "{text}"')
-
-        lines.append("")
-        lines.append(f"Return translated {target_lang} text as JSON for each key.")
-
-        return "\n".join(lines)
+        return build_translator_user_prompt(texts, target_lang)
 
     def _build_system_prompt(
         self,
@@ -406,13 +373,6 @@ class BatchTranslator:
         """
         source_lang = get_language_name(self.source_locale, "en")
         target_lang = get_language_name(self.target_locale, "en")
-
-        # Language-specific rules (currently only for Korean)
-        target_specific_rules = ""
-        if self.target_locale.startswith("ko"):
-            target_specific_rules = "4. For Korean: use appropriate particles (이/가, 을/를) based on final consonant"
-        elif self.target_locale.startswith("ja"):
-            target_specific_rules = "4. For Japanese: use appropriate particles (は/が, を/に) and polite forms"
 
         glossary_context = ""
         if self.glossary:
@@ -433,18 +393,12 @@ class BatchTranslator:
 {self.glossary.to_context_string()}
 """
 
-        # Add previous errors context if available
-        if errors:
-            error_context = "\n## Previous Translation Errors (Please Fix)\n"
-            for key, error in errors.items():
-                error_context += f"- Key '{key}': {error}\n"
-            glossary_context += error_context
-
-        return SYSTEM_PROMPT_TEMPLATE.format(
+        return build_translator_system_prompt(
             source_lang=source_lang,
             target_lang=target_lang,
-            target_specific_rules=target_specific_rules,
+            target_locale=self.target_locale,
             glossary_context=glossary_context,
+            errors=errors,
         )
 
     def update_glossary(self, glossary: Glossary) -> None:

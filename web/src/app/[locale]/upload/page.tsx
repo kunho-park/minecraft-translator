@@ -18,6 +18,7 @@ import {
     Globe,
     Plus,
     Link as LinkIcon,
+    FileText,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 
@@ -65,8 +66,15 @@ function UploadContent() {
     // --- Modpack State ---
     const [searchQuery, setSearchQuery] = useState(searchParams.get("modpack") || "");
     const [modpack, setModpack] = useState<ModpackInfo | null>(null);
+
+    const [resourcePackType, setResourcePackType] = useState<"file" | "link">("file");
     const [resourcePack, setResourcePack] = useState<File | null>(null);
+    const [resourcePackLink, setResourcePackLink] = useState("");
+
+    const [overrideFileType, setOverrideFileType] = useState<"file" | "link">("file");
     const [overrideFile, setOverrideFile] = useState<File | null>(null);
+    const [overrideFileLink, setOverrideFileLink] = useState("");
+
     const [modpackVersion, setModpackVersion] = useState("");
     const [sourceLang, setSourceLang] = useState("en_us");
     const [targetLang, setTargetLang] = useState("ko_kr");
@@ -86,8 +94,15 @@ function UploadContent() {
     const [newMapAuthor, setNewMapAuthor] = useState("");
     const [newMapLink, setNewMapLink] = useState("");
     const [newMapThumbnail, setNewMapThumbnail] = useState<File | null>(null);
+
+    const [mapResourcePackType, setMapResourcePackType] = useState<"file" | "link">("file");
     const [mapResourcePack, setMapResourcePack] = useState<File | null>(null);
+    const [mapResourcePackLink, setMapResourcePackLink] = useState("");
+
+    const [mapOverrideFileType, setMapOverrideFileType] = useState<"file" | "link">("file");
     const [mapOverrideFile, setMapOverrideFile] = useState<File | null>(null);
+    const [mapOverrideFileLink, setMapOverrideFileLink] = useState("");
+
     const [mapVersion, setMapVersion] = useState("");
 
     // Auto-search if modpack ID is in URL
@@ -162,7 +177,10 @@ function UploadContent() {
     };
 
     const handleModpackSubmit = async () => {
-        if (!modpack || !modpackVersion || (!resourcePack && !overrideFile)) {
+        const hasResourcePack = resourcePackType === "file" ? !!resourcePack : !!resourcePackLink;
+        const hasOverrideFile = overrideFileType === "file" ? !!overrideFile : !!overrideFileLink;
+
+        if (!modpack || !modpackVersion || (!hasResourcePack && !hasOverrideFile)) {
             setError("Please fill in all required fields");
             return;
         }
@@ -184,8 +202,18 @@ function UploadContent() {
                 formData.append("usedGlossary", usedGlossary.toString());
             }
             formData.append("reviewed", reviewed.toString());
-            if (resourcePack) formData.append("resourcePack", resourcePack);
-            if (overrideFile) formData.append("overrideFile", overrideFile);
+
+            if (resourcePackType === "file" && resourcePack) {
+                formData.append("resourcePack", resourcePack);
+            } else if (resourcePackType === "link" && resourcePackLink) {
+                formData.append("resourcePackLink", resourcePackLink);
+            }
+
+            if (overrideFileType === "file" && overrideFile) {
+                formData.append("overrideFile", overrideFile);
+            } else if (overrideFileType === "link" && overrideFileLink) {
+                formData.append("overrideFileLink", overrideFileLink);
+            }
 
             const response = await fetch("/api/translations", {
                 method: "POST",
@@ -206,7 +234,10 @@ function UploadContent() {
     };
 
     const handleMapSubmit = async () => {
-        if ((!mapResourcePack && !mapOverrideFile) || !mapVersion) {
+        const hasResourcePack = mapResourcePackType === "file" ? !!mapResourcePack : !!mapResourcePackLink;
+        const hasOverrideFile = mapOverrideFileType === "file" ? !!mapOverrideFile : !!mapOverrideFileLink;
+
+        if ((!hasResourcePack && !hasOverrideFile) || !mapVersion) {
             setError("Please fill in all required fields");
             return;
         }
@@ -254,8 +285,18 @@ function UploadContent() {
             const formData = new FormData();
             formData.append("mapId", mapId!.toString());
             formData.append("version", mapVersion);
-            if (mapResourcePack) formData.append("resourcePack", mapResourcePack);
-            if (mapOverrideFile) formData.append("overrideFile", mapOverrideFile);
+
+            if (mapResourcePackType === "file" && mapResourcePack) {
+                formData.append("resourcePack", mapResourcePack);
+            } else if (mapResourcePackType === "link" && mapResourcePackLink) {
+                formData.append("resourcePackLink", mapResourcePackLink);
+            }
+
+            if (mapOverrideFileType === "file" && mapOverrideFile) {
+                formData.append("overrideFile", mapOverrideFile);
+            } else if (mapOverrideFileType === "link" && mapOverrideFileLink) {
+                formData.append("overrideFileLink", mapOverrideFileLink);
+            }
 
             const response = await fetch("/api/maps/translations", {
                 method: "POST",
@@ -274,6 +315,104 @@ function UploadContent() {
             setLoading(false);
         }
     };
+
+    const renderFileInput = (
+        label: string,
+        type: "file" | "link",
+        setType: (t: "file" | "link") => void,
+        file: File | null,
+        setFile: (e: React.ChangeEvent<HTMLInputElement>) => void,
+        link: string,
+        setLink: (s: string) => void,
+        fileInputName: string
+    ) => (
+        <div>
+            <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm text-[var(--text-secondary)]">
+                    {label}
+                </label>
+                <div className="flex bg-[var(--bg-tertiary)] rounded-lg p-1">
+                    <button
+                        onClick={() => setType("file")}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${type === "file"
+                            ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm"
+                            : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                            }`}
+                    >
+                        파일
+                    </button>
+                    <button
+                        onClick={() => setType("link")}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${type === "link"
+                            ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm"
+                            : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                            }`}
+                    >
+                        링크
+                    </button>
+                </div>
+            </div>
+
+            {type === "file" ? (
+                <div className="relative">
+                    <input
+                        type="file"
+                        accept=".zip"
+                        onChange={setFile}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <div
+                        className={`p-8 rounded-lg border-2 border-dashed transition-colors ${file
+                            ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
+                            : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
+                            } flex flex-col items-center justify-center gap-3`}
+                    >
+                        <FileArchive
+                            className={`w-10 h-10 ${file
+                                ? "text-[var(--accent-primary)]"
+                                : "text-[var(--text-muted)]"
+                                }`}
+                        />
+                        {file ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-[var(--text-primary)]">
+                                    {file.name}
+                                </span>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        // Reset file logic handled by parent state update via setFile(null) equivalent
+                                        // But here setFile expects event. 
+                                        // We need a clear handler.
+                                        // For simplicity, user can just click to replace.
+                                    }}
+                                    className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <span className="text-[var(--text-muted)]">
+                                {t("upload.files.dropzone")}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <div className="relative">
+                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] pointer-events-none" />
+                    <input
+                        type="url"
+                        value={link}
+                        onChange={(e) => setLink(e.target.value)}
+                        placeholder="https://example.com/download.zip"
+                        className="w-full pr-4 py-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-primary)] focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-primary)]/20 transition-all"
+                        style={{ paddingLeft: "3.5rem" }}
+                    />
+                </div>
+            )}
+        </div>
+    );
 
     if (status === "loading") {
         return <LoadingFallback />;
@@ -470,98 +609,26 @@ function UploadContent() {
                                 {t("upload.steps.files")}
                             </h2>
                             <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm text-[var(--text-secondary)] mb-2">
-                                        {t("upload.files.resourcePack")}
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="file"
-                                            accept=".zip"
-                                            onChange={(e) => handleFileChange(e, "resourcePack")}
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                        />
-                                        <div
-                                            className={`p-8 rounded-lg border-2 border-dashed transition-colors ${resourcePack
-                                                ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
-                                                : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
-                                                } flex flex-col items-center justify-center gap-3`}
-                                        >
-                                            <FileArchive
-                                                className={`w-10 h-10 ${resourcePack
-                                                    ? "text-[var(--accent-primary)]"
-                                                    : "text-[var(--text-muted)]"
-                                                    }`}
-                                            />
-                                            {resourcePack ? (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[var(--text-primary)]">
-                                                        {resourcePack.name}
-                                                    </span>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            setResourcePack(null);
-                                                        }}
-                                                        className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <span className="text-[var(--text-muted)]">
-                                                    {t("upload.files.dropzone")}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-[var(--text-secondary)] mb-2">
-                                        {t("upload.files.overrideFile")}
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="file"
-                                            accept=".zip"
-                                            onChange={(e) => handleFileChange(e, "overrideFile")}
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                        />
-                                        <div
-                                            className={`p-8 rounded-lg border-2 border-dashed transition-colors ${overrideFile
-                                                ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
-                                                : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
-                                                } flex flex-col items-center justify-center gap-3`}
-                                        >
-                                            <FolderCog
-                                                className={`w-10 h-10 ${overrideFile
-                                                    ? "text-[var(--accent-primary)]"
-                                                    : "text-[var(--text-muted)]"
-                                                    }`}
-                                            />
-                                            {overrideFile ? (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[var(--text-primary)]">
-                                                        {overrideFile.name}
-                                                    </span>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            setOverrideFile(null);
-                                                        }}
-                                                        className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <span className="text-[var(--text-muted)]">
-                                                    {t("upload.files.dropzone")}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
+                                {renderFileInput(
+                                    t("upload.files.resourcePack"),
+                                    resourcePackType,
+                                    setResourcePackType,
+                                    resourcePack,
+                                    (e) => handleFileChange(e, "resourcePack"),
+                                    resourcePackLink,
+                                    setResourcePackLink,
+                                    "resourcePack"
+                                )}
+                                {renderFileInput(
+                                    t("upload.files.overrideFile"),
+                                    overrideFileType,
+                                    setOverrideFileType,
+                                    overrideFile,
+                                    (e) => handleFileChange(e, "overrideFile"),
+                                    overrideFileLink,
+                                    setOverrideFileLink,
+                                    "overrideFile"
+                                )}
                             </div>
                             <div className="flex justify-between mt-6">
                                 <Button variant="secondary" onClick={() => setStep(1)}>
@@ -569,7 +636,10 @@ function UploadContent() {
                                 </Button>
                                 <Button
                                     onClick={() => setStep(3)}
-                                    disabled={!resourcePack && !overrideFile}
+                                    disabled={
+                                        !((resourcePackType === "file" && resourcePack) || (resourcePackType === "link" && resourcePackLink)) &&
+                                        !((overrideFileType === "file" && overrideFile) || (overrideFileType === "link" && overrideFileLink))
+                                    }
                                 >
                                     {t("common.submit")} →
                                 </Button>
@@ -912,99 +982,26 @@ function UploadContent() {
                                 파일 및 버전 정보
                             </h2>
                             <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm text-[var(--text-secondary)] mb-2">
-                                        리소스팩 (ZIP)
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="file"
-                                            accept=".zip"
-                                            onChange={(e) => handleFileChange(e, "mapResourcePack")}
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                        />
-                                        <div
-                                            className={`p-8 rounded-lg border-2 border-dashed transition-colors ${mapResourcePack
-                                                ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
-                                                : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
-                                                } flex flex-col items-center justify-center gap-3`}
-                                        >
-                                            <FileArchive
-                                                className={`w-10 h-10 ${mapResourcePack
-                                                    ? "text-[var(--accent-primary)]"
-                                                    : "text-[var(--text-muted)]"
-                                                    }`}
-                                            />
-                                            {mapResourcePack ? (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[var(--text-primary)]">
-                                                        {mapResourcePack.name}
-                                                    </span>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            setMapResourcePack(null);
-                                                        }}
-                                                        className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <span className="text-[var(--text-muted)]">
-                                                    파일을 여기에 드래그하거나 클릭하세요
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm text-[var(--text-secondary)] mb-2">
-                                        덮어쓰기 파일 (ZIP)
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="file"
-                                            accept=".zip"
-                                            onChange={(e) => handleFileChange(e, "mapOverrideFile")}
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                        />
-                                        <div
-                                            className={`p-8 rounded-lg border-2 border-dashed transition-colors ${mapOverrideFile
-                                                ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
-                                                : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
-                                                } flex flex-col items-center justify-center gap-3`}
-                                        >
-                                            <FolderCog
-                                                className={`w-10 h-10 ${mapOverrideFile
-                                                    ? "text-[var(--accent-primary)]"
-                                                    : "text-[var(--text-muted)]"
-                                                    }`}
-                                            />
-                                            {mapOverrideFile ? (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[var(--text-primary)]">
-                                                        {mapOverrideFile.name}
-                                                    </span>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            setMapOverrideFile(null);
-                                                        }}
-                                                        className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <span className="text-[var(--text-muted)]">
-                                                    파일을 여기에 드래그하거나 클릭하세요
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
+                                {renderFileInput(
+                                    "리소스팩 (ZIP)",
+                                    mapResourcePackType,
+                                    setMapResourcePackType,
+                                    mapResourcePack,
+                                    (e) => handleFileChange(e, "mapResourcePack"),
+                                    mapResourcePackLink,
+                                    setMapResourcePackLink,
+                                    "mapResourcePack"
+                                )}
+                                {renderFileInput(
+                                    "덮어쓰기 파일 (ZIP)",
+                                    mapOverrideFileType,
+                                    setMapOverrideFileType,
+                                    mapOverrideFile,
+                                    (e) => handleFileChange(e, "mapOverrideFile"),
+                                    mapOverrideFileLink,
+                                    setMapOverrideFileLink,
+                                    "mapOverrideFile"
+                                )}
 
                                 <label className="block">
                                     <span className="text-sm text-[var(--text-secondary)] mb-2 block">
@@ -1027,7 +1024,12 @@ function UploadContent() {
                                 </Button>
                                 <Button
                                     onClick={handleMapSubmit}
-                                    disabled={loading || (!mapResourcePack && !mapOverrideFile) || !mapVersion}
+                                    disabled={
+                                        loading ||
+                                        (!((mapResourcePackType === "file" && mapResourcePack) || (mapResourcePackType === "link" && mapResourcePackLink)) &&
+                                            !((mapOverrideFileType === "file" && mapOverrideFile) || (mapOverrideFileType === "link" && mapOverrideFileLink))) ||
+                                        !mapVersion
+                                    }
                                     loading={loading}
                                 >
                                     <Upload className="w-4 h-4" />

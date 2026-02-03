@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from ..llm import LLMClient
 from ..models import Glossary, ReviewIssue, ReviewResult
 from ..models.glossary_filter import GlossaryFilter
+from ..prompts import build_reviewer_system_prompt, build_reviewer_user_prompt
 from ..utils import get_language_name
 
 if TYPE_CHECKING:
@@ -72,39 +73,6 @@ class LLMReviewer:
             source_locale,
             target_locale,
         )
-
-    def _build_system_prompt_base(self) -> str:
-        """Build base system prompt for review."""
-        source_lang = get_language_name(self.source_locale, "en")
-        target_lang = get_language_name(self.target_locale, "en")
-
-        # Language-specific review items
-        lang_specific_items = ""
-        if self.target_locale.startswith("ko"):
-            lang_specific_items = """4. **조사 오류**: 받침에 맞지 않는 조사 사용 (예: '이(가)', '을(를)' 대신 단일 조사)"""
-        elif self.target_locale.startswith("ja"):
-            lang_specific_items = (
-                """4. **助詞エラー**: 不適切な助詞の使用 (は/が, を/に など)"""
-            )
-
-        return f"""You are a Minecraft mod translation review expert.
-Compare {source_lang} source text with {target_lang} translations to find and fix issues.
-
-## Review Items
-1. **Mistranslation**: Translation differs from source meaning
-2. **Typos**: Spelling errors, spacing errors
-3. **Unnatural Expression**: Grammatically correct but unnatural phrasing
-{lang_specific_items}
-5. **Terminology Inconsistency**: Same term translated differently
-
-## Review Rules
-- Do NOT modify placeholders (%, {{}}, <>, etc.)
-- Do NOT modify color codes (§, &)
-- Return empty list if no issues found
-
-## Output Format
-Include only problematic items in the issues list.
-Each issue must have: key, issue_type, original, corrected, explanation"""
 
     async def review(
         self,
@@ -262,26 +230,7 @@ Each issue must have: key, issue_type, original, corrected, explanation"""
         source_lang = get_language_name(self.source_locale, "en")
         target_lang = get_language_name(self.target_locale, "en")
 
-        lines = [
-            f"Review the following {source_lang} to {target_lang} translations:",
-            "",
-        ]
-
-        for key, source, translated in pairs:
-            lines.append(f"Key: {key}")
-            lines.append(f"Source: {source}")
-            lines.append(f"Translation: {translated}")
-            lines.append("---")
-
-        lines.append("")
-        lines.append(
-            "Find issues like mistranslations, typos, unnatural expressions, etc."
-        )
-        lines.append(
-            "Report only problematic items and suggest corrected translations."
-        )
-
-        return "\n".join(lines)
+        return build_reviewer_user_prompt(pairs, source_lang, target_lang)
 
     def _build_system_prompt(self, texts: dict[str, str] | None = None) -> str:
         """Build the system prompt with filtered glossary context.
@@ -292,8 +241,10 @@ Each issue must have: key, issue_type, original, corrected, explanation"""
         Returns:
             System prompt string.
         """
-        base_prompt = self._build_system_prompt_base()
+        source_lang = get_language_name(self.source_locale, "en")
+        target_lang = get_language_name(self.target_locale, "en")
 
+        glossary_context = ""
         if self.glossary:
             # Filter glossary to only relevant terms if texts provided
             if texts:
@@ -302,23 +253,22 @@ Each issue must have: key, issue_type, original, corrected, explanation"""
                 )
                 if filtered_glossary.has_rules:
                     glossary_context = f"""
-
 ## Reference Glossary (Filtered for this batch)
 {filtered_glossary.to_context_string()}
-
-Also report if translations differ from glossary-defined terms."""
-                    return base_prompt + glossary_context
+"""
             else:
                 # Fallback to full glossary (shouldn't happen normally)
                 glossary_context = f"""
-
 ## Reference Glossary
 {self.glossary.to_context_string()}
+"""
 
-Also report if translations differ from glossary-defined terms."""
-                return base_prompt + glossary_context
-
-        return base_prompt
+        return build_reviewer_system_prompt(
+            source_lang=source_lang,
+            target_lang=target_lang,
+            target_locale=self.target_locale,
+            glossary_context=glossary_context,
+        )
 
     def apply_corrections(
         self,

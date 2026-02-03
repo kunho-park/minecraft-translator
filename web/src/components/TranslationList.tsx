@@ -112,7 +112,7 @@ export default function TranslationList({
       if (versionDiff !== 0) return versionDiff;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-    
+
     const latestVersion = sortedByVersionAndDate[0].modpackVersion;
 
     const candidates = initialPacks.filter(p => p.modpackVersion === latestVersion);
@@ -121,7 +121,7 @@ export default function TranslationList({
       const ratingA = reviewStats[a.id]?.avgRating || 0;
       const ratingB = reviewStats[b.id]?.avgRating || 0;
       if (ratingB !== ratingA) return ratingB - ratingA;
-      
+
       // If rating equal, use download count
       if (b.downloadCount !== a.downloadCount) return b.downloadCount - a.downloadCount;
 
@@ -142,7 +142,7 @@ export default function TranslationList({
   // Sort logic
   const sortedPacks = useMemo(() => {
     let sorted = [...filteredPacks];
-    
+
     switch (sortBy) {
       case "latest":
         sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -172,12 +172,12 @@ export default function TranslationList({
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
           });
         } else {
-           // Fallback sort: Version desc -> Date desc
-           sorted.sort((a, b) => {
-             const versionDiff = compareVersions(b.modpackVersion, a.modpackVersion);
-             if (versionDiff !== 0) return versionDiff;
-             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-           });
+          // Fallback sort: Version desc -> Date desc
+          sorted.sort((a, b) => {
+            const versionDiff = compareVersions(b.modpackVersion, a.modpackVersion);
+            if (versionDiff !== 0) return versionDiff;
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          });
         }
         break;
     }
@@ -190,37 +190,37 @@ export default function TranslationList({
         <h2 className="text-2xl font-bold text-[var(--text-primary)]">
           {t("modpack.translations")}
         </h2>
-        
+
         <div className="flex flex-wrap items-center gap-3">
           {/* Version Filter */}
           <div className="flex items-center gap-2 bg-[var(--bg-card)] border border-[var(--border-primary)] rounded-lg px-3 py-1.5 transition-colors focus-within:ring-2 focus-within:ring-[var(--accent-primary)]">
-             <Filter className="w-4 h-4 text-[var(--text-secondary)]" />
-             <select
-                value={filterVersion}
-                onChange={(e) => setFilterVersion(e.target.value)}
-                className="bg-transparent text-sm text-[var(--text-primary)] focus:outline-none min-w-[100px]"
-             >
-                <option value="all">{t("modpack.filter.allVersions")}</option>
-                {versions.map(v => <option key={v} value={v}>{v}</option>)}
-             </select>
+            <Filter className="w-4 h-4 text-[var(--text-secondary)]" />
+            <select
+              value={filterVersion}
+              onChange={(e) => setFilterVersion(e.target.value)}
+              className="bg-transparent text-sm text-[var(--text-primary)] focus:outline-none min-w-[100px]"
+            >
+              <option value="all">{t("modpack.filter.allVersions")}</option>
+              {versions.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
           </div>
 
           <div className="w-px h-6 bg-[var(--border-secondary)] hidden sm:block" />
 
           {/* Sort */}
           <div className="flex items-center gap-2 bg-[var(--bg-card)] border border-[var(--border-primary)] rounded-lg px-3 py-1.5 transition-colors focus-within:ring-2 focus-within:ring-[var(--accent-primary)]">
-             <ArrowUpDown className="w-4 h-4 text-[var(--text-secondary)]" />
-             <select 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-transparent text-sm text-[var(--text-primary)] focus:outline-none min-w-[100px]"
-             >
-                <option value="recommended">{t("modpack.sort.recommended")}</option>
-                <option value="latest">{t("modpack.sort.latest")}</option>
-                <option value="version">{t("modpack.sort.version")}</option>
-                <option value="downloads">{t("modpack.sort.downloads")}</option>
-                <option value="rating">{t("modpack.sort.rating")}</option>
-             </select>
+            <ArrowUpDown className="w-4 h-4 text-[var(--text-secondary)]" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-transparent text-sm text-[var(--text-primary)] focus:outline-none min-w-[100px]"
+            >
+              <option value="recommended">{t("modpack.sort.recommended")}</option>
+              <option value="latest">{t("modpack.sort.latest")}</option>
+              <option value="version">{t("modpack.sort.version")}</option>
+              <option value="downloads">{t("modpack.sort.downloads")}</option>
+              <option value="rating">{t("modpack.sort.rating")}</option>
+            </select>
           </div>
         </div>
       </div>
@@ -236,13 +236,13 @@ export default function TranslationList({
               <div key={pack.id} className={`card p-6 transition-all duration-200 ${isRecommended ? 'ring-2 ring-[var(--accent-primary)] bg-[var(--accent-primary)]/5 shadow-md shadow-[var(--accent-primary)]/10' : 'hover:border-[var(--accent-primary)]/50'}`}>
                 {isRecommended && (
                   <div className="mb-4 animate-fade-in">
-                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-primary)] text-white text-xs font-bold shadow-sm">
-                       <ThumbsUp className="w-3 h-3" />
-                       {t("modpack.recommended.badge")}
-                     </span>
-                     <span className="ml-2 text-xs text-[var(--accent-primary)] font-medium">
-                       {t("modpack.recommended.reason")}
-                     </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-primary)] text-white text-xs font-bold shadow-sm">
+                      <ThumbsUp className="w-3 h-3" />
+                      {t("modpack.recommended.badge")}
+                    </span>
+                    <span className="ml-2 text-xs text-[var(--accent-primary)] font-medium">
+                      {t("modpack.recommended.reason")}
+                    </span>
                   </div>
                 )}
                 <div className="flex flex-col lg:flex-row gap-6">
@@ -402,8 +402,8 @@ export default function TranslationList({
                         <TranslationDownloadActions
                           packId={pack.id}
                           modpackId={modpackId}
-                          hasResourcePack={!!pack.resourcePackPath}
-                          hasOverride={!!pack.overrideFilePath}
+                          resourcePackUrl={pack.resourcePackPath}
+                          overrideFileUrl={pack.overrideFilePath}
                         />
                       </div>
                     </div>

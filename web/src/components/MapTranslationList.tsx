@@ -167,8 +167,8 @@ export default function MapTranslationList({
                                         </div>
                                         <MapTranslationDownloadActions
                                             translationId={trans.id}
-                                            hasResourcePack={!!trans.resourcePackUrl}
-                                            hasOverride={!!trans.overrideFileUrl}
+                                            resourcePackUrl={trans.resourcePackUrl}
+                                            overrideFileUrl={trans.overrideFileUrl}
                                         />
                                     </div>
                                 </div>

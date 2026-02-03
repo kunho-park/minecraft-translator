@@ -5,20 +5,20 @@ import { Link } from "@/i18n/navigation";
 import { useState } from "react";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import { FileArchive, FolderCog, BookOpen } from "lucide-react";
+import { FileArchive, FolderCog, BookOpen, ExternalLink } from "lucide-react";
 
 interface TranslationDownloadActionsProps {
     packId: string;
     modpackId: number;
-    hasResourcePack: boolean;
-    hasOverride: boolean;
+    resourcePackUrl: string | null;
+    overrideFileUrl: string | null;
 }
 
 export default function TranslationDownloadActions({
     packId,
     modpackId,
-    hasResourcePack,
-    hasOverride,
+    resourcePackUrl,
+    overrideFileUrl,
 }: TranslationDownloadActionsProps) {
     const t = useTranslations();
     const [downloadedRp, setDownloadedRp] = useState(false);
@@ -26,20 +26,27 @@ export default function TranslationDownloadActions({
     const [showPopup, setShowPopup] = useState(false);
 
     const handleDownload = (type: "resourcepack" | "override") => {
-        // Trigger download
-        const url = `/api/translations/${packId}/download?type=${type}`;
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", ""); // Browser should handle filename from Content-Disposition
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const url = type === "resourcepack" ? resourcePackUrl : overrideFileUrl;
+        if (!url) return;
+
+        if (url.startsWith("http")) {
+            window.open(url, "_blank");
+        } else {
+            // Trigger download
+            const downloadUrl = `/api/translations/${packId}/download?type=${type}`;
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+            link.setAttribute("download", "");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
 
         // Update state
         if (type === "resourcepack") {
             setDownloadedRp(true);
             // If there's no override, OR if override is already downloaded, show popup
-            if (!hasOverride || downloadedOverride) {
+            if (!overrideFileUrl || downloadedOverride) {
                 setShowPopup(true);
             }
         } else {
@@ -54,23 +61,23 @@ export default function TranslationDownloadActions({
     return (
         <>
             <div className="flex gap-2">
-                {hasResourcePack && (
+                {resourcePackUrl && (
                     <Button
                         size="sm"
                         variant="secondary"
                         onClick={() => handleDownload("resourcepack")}
                     >
-                        <FileArchive className="w-4 h-4" />
+                        {resourcePackUrl.startsWith("http") ? <ExternalLink className="w-4 h-4" /> : <FileArchive className="w-4 h-4" />}
                         {t("translation.files.resourcePack")}
                     </Button>
                 )}
-                {hasOverride && (
+                {overrideFileUrl && (
                     <Button
                         size="sm"
                         variant="secondary"
                         onClick={() => handleDownload("override")}
                     >
-                        <FolderCog className="w-4 h-4" />
+                        {overrideFileUrl.startsWith("http") ? <ExternalLink className="w-4 h-4" /> : <FolderCog className="w-4 h-4" />}
                         {t("translation.files.overrideFile")}
                     </Button>
                 )}

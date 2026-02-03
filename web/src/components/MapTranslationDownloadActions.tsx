@@ -2,50 +2,57 @@
 
 import { useTranslations } from "next-intl";
 import Button from "@/components/ui/Button";
-import { FileArchive, FolderCog } from "lucide-react";
+import { FileArchive, FolderCog, ExternalLink } from "lucide-react";
 
 interface MapTranslationDownloadActionsProps {
     translationId: string;
-    hasResourcePack: boolean;
-    hasOverride: boolean;
+    resourcePackUrl: string | null;
+    overrideFileUrl: string | null;
 }
 
 export default function MapTranslationDownloadActions({
     translationId,
-    hasResourcePack,
-    hasOverride,
+    resourcePackUrl,
+    overrideFileUrl,
 }: MapTranslationDownloadActionsProps) {
     const t = useTranslations();
 
     const handleDownload = (type: "resourcepack" | "override") => {
-        const url = `/api/maps/translations/${translationId}/download?type=${type}`;
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", "");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const url = type === "resourcepack" ? resourcePackUrl : overrideFileUrl;
+        if (!url) return;
+
+        if (url.startsWith("http")) {
+            window.open(url, "_blank");
+        } else {
+            const downloadUrl = `/api/maps/translations/${translationId}/download?type=${type}`;
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+            link.setAttribute("download", "");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     };
 
     return (
         <div className="flex gap-2">
-            {hasResourcePack && (
+            {resourcePackUrl && (
                 <Button
                     size="sm"
                     variant="secondary"
                     onClick={() => handleDownload("resourcepack")}
                 >
-                    <FileArchive className="w-4 h-4" />
+                    {resourcePackUrl.startsWith("http") ? <ExternalLink className="w-4 h-4" /> : <FileArchive className="w-4 h-4" />}
                     {t("translation.files.resourcePack")}
                 </Button>
             )}
-            {hasOverride && (
+            {overrideFileUrl && (
                 <Button
                     size="sm"
                     variant="secondary"
                     onClick={() => handleDownload("override")}
                 >
-                    <FolderCog className="w-4 h-4" />
+                    {overrideFileUrl.startsWith("http") ? <ExternalLink className="w-4 h-4" /> : <FolderCog className="w-4 h-4" />}
                     {t("translation.files.overrideFile")}
                 </Button>
             )}
