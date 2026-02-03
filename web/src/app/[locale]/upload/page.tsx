@@ -14,6 +14,10 @@ import {
     Check,
     AlertCircle,
     Loader2,
+    Package,
+    Globe,
+    Plus,
+    Link as LinkIcon,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 
@@ -26,6 +30,16 @@ interface ModpackInfo {
     author: string | null;
     gameVersions: string[];
     downloadCount: number;
+}
+
+interface MapInfo {
+    id: number;
+    name: string;
+    slug: string;
+    summary: string;
+    thumbnailUrl: string | null;
+    originalLink: string | null;
+    author: string | null;
 }
 
 const LANGUAGE_OPTIONS = [
@@ -42,20 +56,17 @@ function UploadContent() {
     const searchParams = useSearchParams();
     const { data: session, status } = useSession();
 
+    const [activeTab, setActiveTab] = useState<"modpack" | "map">("modpack");
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
-    // Step 1: Modpack
+    // --- Modpack State ---
     const [searchQuery, setSearchQuery] = useState(searchParams.get("modpack") || "");
     const [modpack, setModpack] = useState<ModpackInfo | null>(null);
-
-    // Step 2: Files
     const [resourcePack, setResourcePack] = useState<File | null>(null);
     const [overrideFile, setOverrideFile] = useState<File | null>(null);
-
-    // Step 3: Metadata
     const [modpackVersion, setModpackVersion] = useState("");
     const [sourceLang, setSourceLang] = useState("en_us");
     const [targetLang, setTargetLang] = useState("ko_kr");
@@ -65,6 +76,19 @@ function UploadContent() {
     const [batchSize, setBatchSize] = useState("");
     const [usedGlossary, setUsedGlossary] = useState(false);
     const [reviewed, setReviewed] = useState(false);
+
+    // --- Map State ---
+    const [mapSearchQuery, setMapSearchQuery] = useState("");
+    const [selectedMap, setSelectedMap] = useState<MapInfo | null>(null);
+    const [isCreatingMap, setIsCreatingMap] = useState(false);
+    const [newMapName, setNewMapName] = useState("");
+    const [newMapSummary, setNewMapSummary] = useState("");
+    const [newMapAuthor, setNewMapAuthor] = useState("");
+    const [newMapLink, setNewMapLink] = useState("");
+    const [newMapThumbnail, setNewMapThumbnail] = useState<File | null>(null);
+    const [mapResourcePack, setMapResourcePack] = useState<File | null>(null);
+    const [mapOverrideFile, setMapOverrideFile] = useState<File | null>(null);
+    const [mapVersion, setMapVersion] = useState("");
 
     // Auto-search if modpack ID is in URL
     useEffect(() => {
@@ -97,21 +121,47 @@ function UploadContent() {
         }
     };
 
-    const handleFileChange = (
-        e: React.ChangeEvent<HTMLInputElement>,
-        type: "resourcePack" | "overrideFile"
-    ) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            if (type === "resourcePack") {
-                setResourcePack(file);
-            } else {
-                setOverrideFile(file);
+    const handleSearchMap = async (query?: string) => {
+        const searchValue = query || mapSearchQuery;
+        if (!searchValue) return;
+
+        setLoading(true);
+        setError(null);
+        setSelectedMap(null);
+
+        try {
+            const response = await fetch(`/api/maps?q=${encodeURIComponent(searchValue)}`);
+            if (!response.ok) {
+                throw new Error("Failed to search maps");
             }
+            const data = await response.json();
+            if (data.length > 0) {
+                setSelectedMap(data[0]);
+            } else {
+                setError(t("maps.noResults"));
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Unknown error");
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleSubmit = async () => {
+    const handleFileChange = (
+        e: React.ChangeEvent<HTMLInputElement>,
+        type: "resourcePack" | "overrideFile" | "mapResourcePack" | "mapOverrideFile" | "thumbnail"
+    ) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (type === "resourcePack") setResourcePack(file);
+            else if (type === "overrideFile") setOverrideFile(file);
+            else if (type === "mapResourcePack") setMapResourcePack(file);
+            else if (type === "mapOverrideFile") setMapOverrideFile(file);
+            else if (type === "thumbnail") setNewMapThumbnail(file);
+        }
+    };
+
+    const handleModpackSubmit = async () => {
         if (!modpack || !modpackVersion || (!resourcePack && !overrideFile)) {
             setError("Please fill in all required fields");
             return;
@@ -155,6 +205,76 @@ function UploadContent() {
         }
     };
 
+    const handleMapSubmit = async () => {
+        if ((!mapResourcePack && !mapOverrideFile) || !mapVersion) {
+            setError("Please fill in all required fields");
+            return;
+        }
+
+        if (isCreatingMap && (!newMapName || !newMapSummary)) {
+            setError("Please fill in map details");
+            return;
+        }
+
+        if (!isCreatingMap && !selectedMap) {
+            setError("Please select a map");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            let mapId = selectedMap?.id;
+
+            // Create Map if needed
+            if (isCreatingMap) {
+                const mapFormData = new FormData();
+                mapFormData.append("name", newMapName);
+                mapFormData.append("summary", newMapSummary);
+                if (newMapAuthor) mapFormData.append("author", newMapAuthor);
+                if (newMapLink) mapFormData.append("originalLink", newMapLink);
+                if (newMapThumbnail) mapFormData.append("thumbnail", newMapThumbnail);
+
+                const mapResponse = await fetch("/api/maps", {
+                    method: "POST",
+                    body: mapFormData,
+                });
+
+                if (!mapResponse.ok) {
+                    const data = await mapResponse.json();
+                    throw new Error(data.error || "Failed to create map");
+                }
+
+                const newMap = await mapResponse.json();
+                mapId = newMap.id;
+            }
+
+            // Upload Translation
+            const formData = new FormData();
+            formData.append("mapId", mapId!.toString());
+            formData.append("version", mapVersion);
+            if (mapResourcePack) formData.append("resourcePack", mapResourcePack);
+            if (mapOverrideFile) formData.append("overrideFile", mapOverrideFile);
+
+            const response = await fetch("/api/maps/translations", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || "Failed to upload translation");
+            }
+
+            setSuccess(true);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Upload failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (status === "loading") {
         return <LoadingFallback />;
     }
@@ -188,7 +308,9 @@ function UploadContent() {
                 <p className="text-[var(--text-secondary)] mb-8">
                     {t("upload.success.message")}
                 </p>
-                <Button onClick={() => router.push("/modpacks")}>{t("nav.modpacks")}</Button>
+                <Button onClick={() => router.push(activeTab === "modpack" ? "/modpacks" : "/maps")}>
+                    {activeTab === "modpack" ? t("nav.modpacks") : t("nav.maps")}
+                </Button>
             </div>
         );
     }
@@ -198,6 +320,40 @@ function UploadContent() {
             <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-8">
                 {t("upload.title")}
             </h1>
+
+            {/* Tabs */}
+            <div className="flex gap-4 mb-8 border-b border-[var(--border-primary)]">
+                <button
+                    onClick={() => { setActiveTab("modpack"); setStep(1); }}
+                    className={`pb-3 px-4 font-medium transition-colors relative ${activeTab === "modpack"
+                        ? "text-[var(--accent-primary)]"
+                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                        }`}
+                >
+                    <div className="flex items-center gap-2">
+                        <Package className="w-4 h-4" />
+                        {t("nav.modpacks")}
+                    </div>
+                    {activeTab === "modpack" && (
+                        <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--accent-primary)]" />
+                    )}
+                </button>
+                <button
+                    onClick={() => { setActiveTab("map"); setStep(1); }}
+                    className={`pb-3 px-4 font-medium transition-colors relative ${activeTab === "map"
+                        ? "text-[var(--accent-primary)]"
+                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                        }`}
+                >
+                    <div className="flex items-center gap-2">
+                        <Globe className="w-4 h-4" />
+                        {t("nav.maps")}
+                    </div>
+                    {activeTab === "map" && (
+                        <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--accent-primary)]" />
+                    )}
+                </button>
+            </div>
 
             {/* Progress Steps */}
             <div className="flex items-center justify-center gap-4 mb-12">
@@ -228,391 +384,659 @@ function UploadContent() {
                 </div>
             )}
 
-            {/* Step 1: Modpack Selection */}
-            {step === 1 && (
-                <div className="glass rounded-xl p-6">
-                    <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">
-                        {t("upload.steps.modpack")}
-                    </h2>
-
-                    <div className="space-y-4">
-                        <label className="block">
-                            <span className="text-sm text-[var(--text-secondary)] mb-2 block">
-                                {t("upload.modpack.searchLabel")}
-                            </span>
-                            <div className="flex gap-3">
-                                <div className="flex-1 relative">
-                                    <input
-                                        type="text"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        placeholder={t("upload.modpack.searchPlaceholder")}
-                                        className="w-full"
-                                        onKeyDown={(e) => e.key === "Enter" && handleSearchModpack()}
-                                    />
-                                </div>
-                                <Button
-                                    onClick={() => handleSearchModpack()}
-                                    disabled={loading || !searchQuery}
-                                    loading={loading}
-                                >
-                                    <Search className="w-4 h-4" />
-                                    {t("upload.modpack.searchButton")}
-                                </Button>
-                            </div>
-                        </label>
-
-                        {modpack && (
-                            <div className="mt-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
-                                <div className="flex gap-4">
-                                    {modpack.logoUrl ? (
-                                        <Image
-                                            src={modpack.logoUrl}
-                                            alt={modpack.name}
-                                            width={64}
-                                            height={64}
-                                            className="w-16 h-16 rounded-lg object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-16 h-16 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center">
-                                            <span className="text-2xl font-bold text-[var(--text-muted)]">
-                                                {modpack.name.charAt(0)}
-                                            </span>
+            {/* --- MODPACK FLOW --- */}
+            {activeTab === "modpack" && (
+                <>
+                    {step === 1 && (
+                        <div className="glass rounded-xl p-6">
+                            <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">
+                                {t("upload.steps.modpack")}
+                            </h2>
+                            <div className="space-y-4">
+                                <label className="block">
+                                    <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                        {t("upload.modpack.searchLabel")}
+                                    </span>
+                                    <div className="flex gap-3">
+                                        <div className="flex-1 relative">
+                                            <input
+                                                type="text"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                placeholder={t("upload.modpack.searchPlaceholder")}
+                                                className="w-full"
+                                                onKeyDown={(e) => e.key === "Enter" && handleSearchModpack()}
+                                            />
                                         </div>
-                                    )}
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold text-[var(--text-primary)]">
-                                            {modpack.name}
-                                        </h3>
-                                        {modpack.author && (
-                                            <p className="text-sm text-[var(--text-muted)]">
-                                                by {modpack.author}
-                                            </p>
-                                        )}
-                                        <p className="text-sm text-[var(--text-secondary)] mt-1 line-clamp-2">
-                                            {modpack.summary}
+                                        <Button
+                                            onClick={() => handleSearchModpack()}
+                                            disabled={loading || !searchQuery}
+                                            loading={loading}
+                                        >
+                                            <Search className="w-4 h-4" />
+                                            {t("upload.modpack.searchButton")}
+                                        </Button>
+                                    </div>
+                                </label>
+                                {modpack && (
+                                    <div className="mt-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
+                                        <div className="flex gap-4">
+                                            {modpack.logoUrl ? (
+                                                <Image
+                                                    src={modpack.logoUrl}
+                                                    alt={modpack.name}
+                                                    width={64}
+                                                    height={64}
+                                                    className="w-16 h-16 rounded-lg object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-16 h-16 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center">
+                                                    <span className="text-2xl font-bold text-[var(--text-muted)]">
+                                                        {modpack.name.charAt(0)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="flex-1">
+                                                <h3 className="font-semibold text-[var(--text-primary)]">
+                                                    {modpack.name}
+                                                </h3>
+                                                {modpack.author && (
+                                                    <p className="text-sm text-[var(--text-muted)]">
+                                                        by {modpack.author}
+                                                    </p>
+                                                )}
+                                                <p className="text-sm text-[var(--text-secondary)] mt-1 line-clamp-2">
+                                                    {modpack.summary}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-[var(--accent-primary)] mt-4">
+                                            {t("upload.modpack.confirm")}
                                         </p>
                                     </div>
-                                </div>
-                                <p className="text-sm text-[var(--accent-primary)] mt-4">
-                                    {t("upload.modpack.confirm")}
-                                </p>
+                                )}
                             </div>
-                        )}
-                    </div>
+                            <div className="flex justify-end mt-6">
+                                <Button onClick={() => setStep(2)} disabled={!modpack}>
+                                    {t("common.submit")} →
+                                </Button>
+                            </div>
+                        </div>
+                    )}
 
-                    <div className="flex justify-end mt-6">
-                        <Button onClick={() => setStep(2)} disabled={!modpack}>
-                            {t("common.submit")} →
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* Step 2: Files */}
-            {step === 2 && (
-                <div className="glass rounded-xl p-6">
-                    <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">
-                        {t("upload.steps.files")}
-                    </h2>
-
-                    <div className="space-y-6">
-                        {/* Resource Pack */}
-                        <div>
-                            <label className="block text-sm text-[var(--text-secondary)] mb-2">
-                                {t("upload.files.resourcePack")}
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="file"
-                                    accept=".zip"
-                                    onChange={(e) => handleFileChange(e, "resourcePack")}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                                <div
-                                    className={`p-8 rounded-lg border-2 border-dashed transition-colors ${resourcePack
-                                        ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
-                                        : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
-                                        } flex flex-col items-center justify-center gap-3`}
-                                >
-                                    <FileArchive
-                                        className={`w-10 h-10 ${resourcePack
-                                            ? "text-[var(--accent-primary)]"
-                                            : "text-[var(--text-muted)]"
-                                            }`}
-                                    />
-                                    {resourcePack ? (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[var(--text-primary)]">
-                                                {resourcePack.name}
-                                            </span>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    setResourcePack(null);
-                                                }}
-                                                className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
+                    {step === 2 && (
+                        <div className="glass rounded-xl p-6">
+                            <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">
+                                {t("upload.steps.files")}
+                            </h2>
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm text-[var(--text-secondary)] mb-2">
+                                        {t("upload.files.resourcePack")}
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="file"
+                                            accept=".zip"
+                                            onChange={(e) => handleFileChange(e, "resourcePack")}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                        <div
+                                            className={`p-8 rounded-lg border-2 border-dashed transition-colors ${resourcePack
+                                                ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
+                                                : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
+                                                } flex flex-col items-center justify-center gap-3`}
+                                        >
+                                            <FileArchive
+                                                className={`w-10 h-10 ${resourcePack
+                                                    ? "text-[var(--accent-primary)]"
+                                                    : "text-[var(--text-muted)]"
+                                                    }`}
+                                            />
+                                            {resourcePack ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[var(--text-primary)]">
+                                                        {resourcePack.name}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            setResourcePack(null);
+                                                        }}
+                                                        className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[var(--text-muted)]">
+                                                    {t("upload.files.dropzone")}
+                                                </span>
+                                            )}
                                         </div>
-                                    ) : (
-                                        <span className="text-[var(--text-muted)]">
-                                            {t("upload.files.dropzone")}
-                                        </span>
-                                    )}
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Override File */}
-                        <div>
-                            <label className="block text-sm text-[var(--text-secondary)] mb-2">
-                                {t("upload.files.overrideFile")}
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="file"
-                                    accept=".zip"
-                                    onChange={(e) => handleFileChange(e, "overrideFile")}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                                <div
-                                    className={`p-8 rounded-lg border-2 border-dashed transition-colors ${overrideFile
-                                        ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
-                                        : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
-                                        } flex flex-col items-center justify-center gap-3`}
-                                >
-                                    <FolderCog
-                                        className={`w-10 h-10 ${overrideFile
-                                            ? "text-[var(--accent-primary)]"
-                                            : "text-[var(--text-muted)]"
-                                            }`}
-                                    />
-                                    {overrideFile ? (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[var(--text-primary)]">
-                                                {overrideFile.name}
-                                            </span>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    setOverrideFile(null);
-                                                }}
-                                                className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
+                                <div>
+                                    <label className="block text-sm text-[var(--text-secondary)] mb-2">
+                                        {t("upload.files.overrideFile")}
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="file"
+                                            accept=".zip"
+                                            onChange={(e) => handleFileChange(e, "overrideFile")}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                        <div
+                                            className={`p-8 rounded-lg border-2 border-dashed transition-colors ${overrideFile
+                                                ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
+                                                : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
+                                                } flex flex-col items-center justify-center gap-3`}
+                                        >
+                                            <FolderCog
+                                                className={`w-10 h-10 ${overrideFile
+                                                    ? "text-[var(--accent-primary)]"
+                                                    : "text-[var(--text-muted)]"
+                                                    }`}
+                                            />
+                                            {overrideFile ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[var(--text-primary)]">
+                                                        {overrideFile.name}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            setOverrideFile(null);
+                                                        }}
+                                                        className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[var(--text-muted)]">
+                                                    {t("upload.files.dropzone")}
+                                                </span>
+                                            )}
                                         </div>
-                                    ) : (
-                                        <span className="text-[var(--text-muted)]">
-                                            {t("upload.files.dropzone")}
-                                        </span>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between mt-6">
-                        <Button variant="secondary" onClick={() => setStep(1)}>
-                            ← {t("common.cancel")}
-                        </Button>
-                        <Button
-                            onClick={() => setStep(3)}
-                            disabled={!resourcePack && !overrideFile}
-                        >
-                            {t("common.submit")} →
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* Step 3: Metadata */}
-            {step === 3 && (
-                <div className="glass rounded-xl p-6">
-                    <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">
-                        {t("upload.steps.metadata")}
-                    </h2>
-
-                    <div className="space-y-4">
-                        {/* Translation Type Selection */}
-                        <div className="mb-6">
-                            <label className="block text-sm text-[var(--text-secondary)] mb-3">
-                                {t("upload.metadata.translationType")}
-                            </label>
-                            <div className="flex gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsManualTranslation(false)}
-                                    className={`flex-1 p-4 rounded-lg border-2 transition-all ${!isManualTranslation
-                                        ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"
-                                        : "border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
-                                        }`}
+                            <div className="flex justify-between mt-6">
+                                <Button variant="secondary" onClick={() => setStep(1)}>
+                                    ← {t("common.cancel")}
+                                </Button>
+                                <Button
+                                    onClick={() => setStep(3)}
+                                    disabled={!resourcePack && !overrideFile}
                                 >
-                                    <div className="font-medium">{t("upload.metadata.aiTranslation")}</div>
-                                    <div className="text-xs mt-1 opacity-70">{t("upload.metadata.aiTranslationDesc")}</div>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsManualTranslation(true)}
-                                    className={`flex-1 p-4 rounded-lg border-2 transition-all ${isManualTranslation
-                                        ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"
-                                        : "border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
-                                        }`}
-                                >
-                                    <div className="font-medium">{t("upload.metadata.manualTranslation")}</div>
-                                    <div className="text-xs mt-1 opacity-70">{t("upload.metadata.manualTranslationDesc")}</div>
-                                </button>
+                                    {t("common.submit")} →
+                                </Button>
                             </div>
                         </div>
+                    )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Version */}
-                            <label className="block">
-                                <span className="text-sm text-[var(--text-secondary)] mb-2 block">
-                                    {t("upload.metadata.version")} *
-                                </span>
-                                <input
-                                    type="text"
-                                    value={modpackVersion}
-                                    onChange={(e) => setModpackVersion(e.target.value)}
-                                    placeholder={t("upload.metadata.versionPlaceholder")}
-                                    className="w-full"
-                                    required
-                                />
-                            </label>
-
-                            {/* Source Language */}
-                            <label className="block">
-                                <span className="text-sm text-[var(--text-secondary)] mb-2 block">
-                                    {t("upload.metadata.sourceLang")}
-                                </span>
-                                <select
-                                    value={sourceLang}
-                                    onChange={(e) => setSourceLang(e.target.value)}
-                                    className="w-full"
-                                >
-                                    {LANGUAGE_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-
-                            {/* Target Language */}
-                            <label className="block">
-                                <span className="text-sm text-[var(--text-secondary)] mb-2 block">
-                                    {t("upload.metadata.targetLang")}
-                                </span>
-                                <select
-                                    value={targetLang}
-                                    onChange={(e) => setTargetLang(e.target.value)}
-                                    className="w-full"
-                                >
-                                    {LANGUAGE_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-
-                            {/* AI-specific fields - only show when not manual */}
-                            {!isManualTranslation && (
-                                <>
-                                    {/* LLM Model */}
+                    {step === 3 && (
+                        <div className="glass rounded-xl p-6">
+                            <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">
+                                {t("upload.steps.metadata")}
+                            </h2>
+                            <div className="space-y-4">
+                                <div className="mb-6">
+                                    <label className="block text-sm text-[var(--text-secondary)] mb-3">
+                                        {t("upload.metadata.translationType")}
+                                    </label>
+                                    <div className="flex gap-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsManualTranslation(false)}
+                                            className={`flex-1 p-4 rounded-lg border-2 transition-all ${!isManualTranslation
+                                                ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"
+                                                : "border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+                                                }`}
+                                        >
+                                            <div className="font-medium">{t("upload.metadata.aiTranslation")}</div>
+                                            <div className="text-xs mt-1 opacity-70">{t("upload.metadata.aiTranslationDesc")}</div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsManualTranslation(true)}
+                                            className={`flex-1 p-4 rounded-lg border-2 transition-all ${isManualTranslation
+                                                ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"
+                                                : "border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+                                                }`}
+                                        >
+                                            <div className="font-medium">{t("upload.metadata.manualTranslation")}</div>
+                                            <div className="text-xs mt-1 opacity-70">{t("upload.metadata.manualTranslationDesc")}</div>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <label className="block">
                                         <span className="text-sm text-[var(--text-secondary)] mb-2 block">
-                                            {t("upload.metadata.model")}
+                                            {t("upload.metadata.version")} *
                                         </span>
                                         <input
                                             type="text"
-                                            value={llmModel}
-                                            onChange={(e) => setLlmModel(e.target.value)}
-                                            placeholder={t("upload.metadata.modelPlaceholder")}
+                                            value={modpackVersion}
+                                            onChange={(e) => setModpackVersion(e.target.value)}
+                                            placeholder={t("upload.metadata.versionPlaceholder")}
                                             className="w-full"
+                                            required
                                         />
                                     </label>
-
-                                    {/* Temperature */}
                                     <label className="block">
                                         <span className="text-sm text-[var(--text-secondary)] mb-2 block">
-                                            {t("upload.metadata.temperature")}
+                                            {t("upload.metadata.sourceLang")}
                                         </span>
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            max="2"
-                                            value={temperature}
-                                            onChange={(e) => setTemperature(e.target.value)}
+                                        <select
+                                            value={sourceLang}
+                                            onChange={(e) => setSourceLang(e.target.value)}
                                             className="w-full"
-                                        />
+                                        >
+                                            {LANGUAGE_OPTIONS.map((opt) => (
+                                                <option key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </label>
-
-                                    {/* Batch Size */}
                                     <label className="block">
                                         <span className="text-sm text-[var(--text-secondary)] mb-2 block">
-                                            {t("upload.metadata.batchSize")}
+                                            {t("upload.metadata.targetLang")}
                                         </span>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            value={batchSize}
-                                            onChange={(e) => setBatchSize(e.target.value)}
+                                        <select
+                                            value={targetLang}
+                                            onChange={(e) => setTargetLang(e.target.value)}
                                             className="w-full"
-                                        />
+                                        >
+                                            {LANGUAGE_OPTIONS.map((opt) => (
+                                                <option key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </label>
-                                </>
-                            )}
+                                    {!isManualTranslation && (
+                                        <>
+                                            <label className="block">
+                                                <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                                    {t("upload.metadata.model")}
+                                                </span>
+                                                <input
+                                                    type="text"
+                                                    value={llmModel}
+                                                    onChange={(e) => setLlmModel(e.target.value)}
+                                                    placeholder={t("upload.metadata.modelPlaceholder")}
+                                                    className="w-full"
+                                                />
+                                            </label>
+                                            <label className="block">
+                                                <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                                    {t("upload.metadata.temperature")}
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    step="0.1"
+                                                    min="0"
+                                                    max="2"
+                                                    value={temperature}
+                                                    onChange={(e) => setTemperature(e.target.value)}
+                                                    className="w-full"
+                                                />
+                                            </label>
+                                            <label className="block">
+                                                <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                                    {t("upload.metadata.batchSize")}
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    value={batchSize}
+                                                    onChange={(e) => setBatchSize(e.target.value)}
+                                                    className="w-full"
+                                                />
+                                            </label>
+                                        </>
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap gap-6 mt-4">
+                                    {!isManualTranslation && (
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={usedGlossary}
+                                                onChange={(e) => setUsedGlossary(e.target.checked)}
+                                                className="w-5 h-5 rounded border-[var(--border-primary)] bg-[var(--bg-secondary)]"
+                                            />
+                                            <span className="text-sm text-[var(--text-secondary)]">
+                                                {t("upload.metadata.usedGlossary")}
+                                            </span>
+                                        </label>
+                                    )}
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={reviewed}
+                                            onChange={(e) => setReviewed(e.target.checked)}
+                                            className="w-5 h-5 rounded border-[var(--border-primary)] bg-[var(--bg-secondary)]"
+                                        />
+                                        <span className="text-sm text-[var(--text-secondary)]">
+                                            {t("upload.metadata.reviewed")}
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="flex justify-between mt-6">
+                                <Button variant="secondary" onClick={() => setStep(2)}>
+                                    ← {t("common.cancel")}
+                                </Button>
+                                <Button
+                                    onClick={handleModpackSubmit}
+                                    disabled={loading || !modpackVersion}
+                                    loading={loading}
+                                >
+                                    <Upload className="w-4 h-4" />
+                                    {t("upload.submitButton")}
+                                </Button>
+                            </div>
                         </div>
+                    )}
+                </>
+            )}
 
-                        {/* Checkboxes */}
-                        <div className="flex flex-wrap gap-6 mt-4">
-                            {!isManualTranslation && (
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={usedGlossary}
-                                        onChange={(e) => setUsedGlossary(e.target.checked)}
-                                        className="w-5 h-5 rounded border-[var(--border-primary)] bg-[var(--bg-secondary)]"
-                                    />
-                                    <span className="text-sm text-[var(--text-secondary)]">
-                                        {t("upload.metadata.usedGlossary")}
+            {/* --- MAP FLOW --- */}
+            {activeTab === "map" && (
+                <>
+                    {step === 1 && (
+                        <div className="glass rounded-xl p-6">
+                            <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">
+                                맵 선택 또는 생성
+                            </h2>
+
+                            {!isCreatingMap ? (
+                                <div className="space-y-4">
+                                    <label className="block">
+                                        <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                            맵 검색
+                                        </span>
+                                        <div className="flex gap-3">
+                                            <div className="flex-1 relative">
+                                                <input
+                                                    type="text"
+                                                    value={mapSearchQuery}
+                                                    onChange={(e) => setMapSearchQuery(e.target.value)}
+                                                    placeholder="맵 이름 검색..."
+                                                    className="w-full"
+                                                    onKeyDown={(e) => e.key === "Enter" && handleSearchMap()}
+                                                />
+                                            </div>
+                                            <Button
+                                                onClick={() => handleSearchMap()}
+                                                disabled={loading || !mapSearchQuery}
+                                                loading={loading}
+                                            >
+                                                <Search className="w-4 h-4" />
+                                                검색
+                                            </Button>
+                                        </div>
+                                    </label>
+
+                                    {selectedMap && (
+                                        <div className="mt-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
+                                            <div className="flex gap-4">
+                                                {selectedMap.thumbnailUrl ? (
+                                                    <Image
+                                                        src={selectedMap.thumbnailUrl}
+                                                        alt={selectedMap.name}
+                                                        width={64}
+                                                        height={64}
+                                                        className="w-16 h-16 rounded-lg object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="w-16 h-16 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center">
+                                                        <span className="text-2xl font-bold text-[var(--text-muted)]">
+                                                            {selectedMap.name.charAt(0)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="flex-1">
+                                                    <h3 className="font-semibold text-[var(--text-primary)]">
+                                                        {selectedMap.name}
+                                                    </h3>
+                                                    {selectedMap.author && (
+                                                        <p className="text-sm text-[var(--text-muted)]">
+                                                            by {selectedMap.author}
+                                                        </p>
+                                                    )}
+                                                    <p className="text-sm text-[var(--text-secondary)] mt-1 line-clamp-2">
+                                                        {selectedMap.summary}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm text-[var(--accent-primary)] mt-4">
+                                                이 맵이 맞나요?
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <div className="pt-4 border-t border-[var(--border-primary)]">
+                                        <p className="text-sm text-[var(--text-secondary)] mb-3">
+                                            찾으시는 맵이 없나요?
+                                        </p>
+                                        <Button variant="secondary" onClick={() => setIsCreatingMap(true)}>
+                                            <Plus className="w-4 h-4" />
+                                            새로운 맵 등록하기
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4 animate-fade-in">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="font-medium text-[var(--text-primary)]">새 맵 정보 입력</h3>
+                                        <Button variant="ghost" size="sm" onClick={() => setIsCreatingMap(false)}>
+                                            취소
+                                        </Button>
+                                    </div>
+
+                                    <label className="block">
+                                        <span className="text-sm text-[var(--text-secondary)] mb-2 block">맵 이름 *</span>
+                                        <input
+                                            type="text"
+                                            value={newMapName}
+                                            onChange={(e) => setNewMapName(e.target.value)}
+                                            className="w-full"
+                                            required
+                                        />
+                                    </label>
+
+                                    <label className="block">
+                                        <span className="text-sm text-[var(--text-secondary)] mb-2 block">설명 *</span>
+                                        <textarea
+                                            value={newMapSummary}
+                                            onChange={(e) => setNewMapSummary(e.target.value)}
+                                            className="w-full h-24 resize-none"
+                                            required
+                                        />
+                                    </label>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <label className="block">
+                                            <span className="text-sm text-[var(--text-secondary)] mb-2 block">제작자</span>
+                                            <input
+                                                type="text"
+                                                value={newMapAuthor}
+                                                onChange={(e) => setNewMapAuthor(e.target.value)}
+                                                className="w-full"
+                                            />
+                                        </label>
+                                        <label className="block">
+                                            <span className="text-sm text-[var(--text-secondary)] mb-2 block">원본 링크</span>
+                                            <input
+                                                type="url"
+                                                value={newMapLink}
+                                                onChange={(e) => setNewMapLink(e.target.value)}
+                                                className="w-full"
+                                                placeholder="https://..."
+                                            />
+                                        </label>
+                                    </div>
+
+                                    <label className="block">
+                                        <span className="text-sm text-[var(--text-secondary)] mb-2 block">썸네일 이미지</span>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => handleFileChange(e, "thumbnail")}
+                                            className="w-full text-sm text-[var(--text-secondary)] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[var(--accent-primary)] file:text-white hover:file:bg-[var(--accent-secondary)]"
+                                        />
+                                    </label>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end mt-6">
+                                <Button
+                                    onClick={() => setStep(2)}
+                                    disabled={(!selectedMap && !isCreatingMap) || (isCreatingMap && (!newMapName || !newMapSummary))}
+                                >
+                                    다음 →
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {step === 2 && (
+                        <div className="glass rounded-xl p-6">
+                            <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6">
+                                파일 및 버전 정보
+                            </h2>
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm text-[var(--text-secondary)] mb-2">
+                                        리소스팩 (ZIP)
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="file"
+                                            accept=".zip"
+                                            onChange={(e) => handleFileChange(e, "mapResourcePack")}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                        <div
+                                            className={`p-8 rounded-lg border-2 border-dashed transition-colors ${mapResourcePack
+                                                ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
+                                                : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
+                                                } flex flex-col items-center justify-center gap-3`}
+                                        >
+                                            <FileArchive
+                                                className={`w-10 h-10 ${mapResourcePack
+                                                    ? "text-[var(--accent-primary)]"
+                                                    : "text-[var(--text-muted)]"
+                                                    }`}
+                                            />
+                                            {mapResourcePack ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[var(--text-primary)]">
+                                                        {mapResourcePack.name}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            setMapResourcePack(null);
+                                                        }}
+                                                        className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[var(--text-muted)]">
+                                                    파일을 여기에 드래그하거나 클릭하세요
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm text-[var(--text-secondary)] mb-2">
+                                        덮어쓰기 파일 (ZIP)
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="file"
+                                            accept=".zip"
+                                            onChange={(e) => handleFileChange(e, "mapOverrideFile")}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                        <div
+                                            className={`p-8 rounded-lg border-2 border-dashed transition-colors ${mapOverrideFile
+                                                ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
+                                                : "border-[var(--border-primary)] hover:border-[var(--text-muted)]"
+                                                } flex flex-col items-center justify-center gap-3`}
+                                        >
+                                            <FolderCog
+                                                className={`w-10 h-10 ${mapOverrideFile
+                                                    ? "text-[var(--accent-primary)]"
+                                                    : "text-[var(--text-muted)]"
+                                                    }`}
+                                            />
+                                            {mapOverrideFile ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[var(--text-primary)]">
+                                                        {mapOverrideFile.name}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            setMapOverrideFile(null);
+                                                        }}
+                                                        className="text-[var(--text-muted)] hover:text-[var(--status-error)]"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[var(--text-muted)]">
+                                                    파일을 여기에 드래그하거나 클릭하세요
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label className="block">
+                                    <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                        맵 버전 *
                                     </span>
+                                    <input
+                                        type="text"
+                                        value={mapVersion}
+                                        onChange={(e) => setMapVersion(e.target.value)}
+                                        placeholder="예: 1.0.0"
+                                        className="w-full"
+                                        required
+                                    />
                                 </label>
-                            )}
+                            </div>
 
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={reviewed}
-                                    onChange={(e) => setReviewed(e.target.checked)}
-                                    className="w-5 h-5 rounded border-[var(--border-primary)] bg-[var(--bg-secondary)]"
-                                />
-                                <span className="text-sm text-[var(--text-secondary)]">
-                                    {t("upload.metadata.reviewed")}
-                                </span>
-                            </label>
+                            <div className="flex justify-between mt-6">
+                                <Button variant="secondary" onClick={() => setStep(1)}>
+                                    ← 이전
+                                </Button>
+                                <Button
+                                    onClick={handleMapSubmit}
+                                    disabled={loading || (!mapResourcePack && !mapOverrideFile) || !mapVersion}
+                                    loading={loading}
+                                >
+                                    <Upload className="w-4 h-4" />
+                                    업로드
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="flex justify-between mt-6">
-                        <Button variant="secondary" onClick={() => setStep(2)}>
-                            ← {t("common.cancel")}
-                        </Button>
-                        <Button
-                            onClick={handleSubmit}
-                            disabled={loading || !modpackVersion}
-                            loading={loading}
-                        >
-                            <Upload className="w-4 h-4" />
-                            {t("upload.submitButton")}
-                        </Button>
-                    </div>
-                </div>
+                    )}
+                </>
             )}
         </div>
     );

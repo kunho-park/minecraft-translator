@@ -37,6 +37,12 @@ export default function Footer() {
                 {t("nav.modpacks")}
               </Link>
               <Link
+                href="/maps"
+                className="text-sm text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
+              >
+                {t("nav.maps")}
+              </Link>
+              <Link
                 href="/upload"
                 className="text-sm text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
               >

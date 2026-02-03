@@ -1,7 +1,7 @@
 {
     "common": {
-        "siteName": "Modpack Translations",
-        "siteDescription": "Share Minecraft modpack translations",
+        "siteName": "Minecraft Translation Center",
+        "siteDescription": "Share Minecraft translations",
         "search": "Search",
         "searchPlaceholder": "Search modpacks...",
         "loading": "Loading...",
@@ -26,6 +26,7 @@
     "nav": {
         "home": "Home",
         "modpacks": "Modpacks",
+        "maps": "Maps",
         "upload": "Upload",
         "myUploads": "My Uploads",
         "admin": "Admin",
@@ -34,14 +35,24 @@
     },
     "home": {
         "hero": {
-            "title": "Minecraft Modpack Translations",
-            "subtitle": "Discover high-quality translations made by the community",
-            "searchPlaceholder": "Search by modpack name..."
+            "title": "Minecraft Translation Center",
+            "subtitle": "Discover translations for modpacks, maps, and more",
+            "searchPlaceholder": "Search by modpack or map name..."
         },
         "sections": {
             "latest": "Latest Translations",
             "popular": "Popular Translations",
             "viewAll": "View All"
+        }
+    },
+    "maps": {
+        "title": "Translated Maps",
+        "noResults": "No results found",
+        "uploadTranslation": "Upload Map Translation",
+        "info": {
+            "author": "Author",
+            "version": "Version",
+            "downloads": "Downloads"
         }
     },
     "modpacks": {
@@ -289,7 +300,7 @@
         "zh_tw": "Chinese (Traditional)"
     },
     "footer": {
-        "description": "A community for sharing Minecraft modpack translations",
+        "description": "A community for sharing Minecraft translations",
         "links": {
             "github": "GitHub",
             "discord": "Discord"

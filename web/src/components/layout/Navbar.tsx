@@ -29,7 +29,7 @@ export default function Navbar() {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const nextRouter = useNextRouter();
-  
+
   const langMenuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -50,12 +50,13 @@ export default function Navbar() {
   const navItems = [
     { href: "/", label: t("nav.home"), icon: Home },
     { href: "/modpacks", label: t("nav.modpacks"), icon: Package },
+    { href: "/maps", label: t("nav.maps"), icon: Globe },
     { href: "/upload", label: t("nav.upload"), icon: Upload },
-    { 
-      href: "https://github.com/kunho-park/minecraft-translator", 
-      label: t("nav.directTranslate"), 
-      icon: Github, 
-      external: true 
+    {
+      href: "https://github.com/kunho-park/minecraft-translator",
+      label: t("nav.directTranslate"),
+      icon: Github,
+      external: true
     },
   ];
 
@@ -97,11 +98,10 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-1">
             {navItems.map((item) => {
               const isExternal = "external" in item;
-              const commonClasses = `flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                !isExternal && isActive(item.href)
+              const commonClasses = `flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${!isExternal && isActive(item.href)
                   ? "bg-[var(--accent-primary)] text-white shadow-md shadow-[var(--accent-primary)]/20"
                   : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
-              }`;
+                }`;
 
               if (isExternal) {
                 return (
@@ -260,11 +260,10 @@ export default function Navbar() {
           <div className="px-4 py-4 space-y-1">
             {navItems.map((item) => {
               const isExternal = "external" in item;
-              const commonClasses = `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                !isExternal && isActive(item.href)
+              const commonClasses = `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${!isExternal && isActive(item.href)
                   ? "bg-[var(--accent-primary)] text-white"
                   : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
-              }`;
+                }`;
 
               if (isExternal) {
                 return (

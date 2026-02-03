@@ -37,6 +37,7 @@ interface RefreshResult {
 // Flattened schema - no versions
 interface Translation {
     id: string;
+    type: "modpack" | "map";
     modpackVersion: string;
     sourceLang: string;
     targetLang: string;
@@ -122,12 +123,12 @@ export default function AdminPage() {
         }
     };
 
-    const handleApprove = async (id: string) => {
+    const handleApprove = async (id: string, type: string) => {
         if (!confirm(t("admin.confirmApprove"))) return;
 
         setProcessing(id);
         try {
-            const response = await fetch(`/api/admin/approve/${id}`, {
+            const response = await fetch(`/api/admin/approve/${id}?type=${type}`, {
                 method: "POST",
             });
             if (response.ok) {
@@ -146,12 +147,12 @@ export default function AdminPage() {
         }
     };
 
-    const handleReject = async (id: string) => {
+    const handleReject = async (id: string, type: string) => {
         if (!confirm(t("admin.confirmReject"))) return;
 
         setProcessing(id);
         try {
-            const response = await fetch(`/api/admin/reject/${id}`, {
+            const response = await fetch(`/api/admin/reject/${id}?type=${type}`, {
                 method: "POST",
             });
             if (response.ok) {
@@ -170,12 +171,12 @@ export default function AdminPage() {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (id: string, type: string) => {
         if (!confirm(t("admin.confirmDelete"))) return;
 
         setProcessing(id);
         try {
-            const response = await fetch(`/api/admin/translations/${id}`, {
+            const response = await fetch(`/api/admin/translations/${id}?type=${type}`, {
                 method: "DELETE",
             });
             if (response.ok) {
@@ -194,10 +195,10 @@ export default function AdminPage() {
         setEditDiscordId(item.user?.discordId || "");
     };
 
-    const handleEditSave = async (id: string) => {
+    const handleEditSave = async (id: string, type: string) => {
         setProcessing(id);
         try {
-            const response = await fetch(`/api/admin/translations/${id}`, {
+            const response = await fetch(`/api/admin/translations/${id}?type=${type}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -563,7 +564,7 @@ export default function AdminPage() {
                                             </Button>
                                             <Button
                                                 size="sm"
-                                                onClick={() => handleEditSave(item.id)}
+                                                onClick={() => handleEditSave(item.id, item.type)}
                                                 disabled={isProcessing}
                                             >
                                                 {t("common.save")}
@@ -576,7 +577,7 @@ export default function AdminPage() {
                                                     <Button
                                                         variant="danger"
                                                         size="sm"
-                                                        onClick={() => handleReject(item.id)}
+                                                        onClick={() => handleReject(item.id, item.type)}
                                                         disabled={isProcessing}
                                                     >
                                                         <X className="w-4 h-4" />
@@ -584,7 +585,7 @@ export default function AdminPage() {
                                                     </Button>
                                                     <Button
                                                         size="sm"
-                                                        onClick={() => handleApprove(item.id)}
+                                                        onClick={() => handleApprove(item.id, item.type)}
                                                         disabled={isProcessing}
                                                     >
                                                         <Check className="w-4 h-4" />
@@ -604,7 +605,7 @@ export default function AdminPage() {
                                             <Button
                                                 variant="danger"
                                                 size="sm"
-                                                onClick={() => handleDelete(item.id)}
+                                                onClick={() => handleDelete(item.id, item.type)}
                                                 disabled={isProcessing}
                                             >
                                                 <Trash2 className="w-4 h-4" />

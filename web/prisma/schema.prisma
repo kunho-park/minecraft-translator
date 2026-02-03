@@ -16,6 +16,7 @@ model User {
   createdAt        DateTime          @default(now())
   reviews          Review[]
   translationPacks TranslationPack[]
+  mapTranslations  MapTranslation[]
 }
 
 model Modpack {
@@ -85,4 +86,37 @@ model Review {
 
   @@index([packId])
   @@index([ipAddress])
+}
+
+model Map {
+  id             Int              @id @default(autoincrement())
+  name           String
+  slug           String           @unique
+  summary        String
+  thumbnailUrl   String?
+  originalLink   String?
+  author         String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  translations   MapTranslation[]
+}
+
+model MapTranslation {
+  id            String   @id @default(uuid())
+  mapId         Int
+  map           Map      @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  version       String
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+  sourceLang    String   @default("en_us")
+  targetLang    String   @default("ko_kr")
+  status          String   @default("pending")
+  resourcePackUrl String?
+  overrideFileUrl String?
+  downloadCount   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([mapId])
+  @@index([status])
 }

@@ -85,10 +85,21 @@ web/data/
 web/scripts/
 web/scripts/.*
 
+web/prisma/*.db
+web/prisma/*.db-journal
+web/prisma/migrations/*
+!/web/prisma/migrations/.gitkeep
+
+web/prisma/migrations/*/migration.sql
+web/prisma/migrations/*/migration.sql.lock
+
 # Docker
 .dockerignore
 
+prisma/migrations/20260203090622_add_map_models/migration.sql
+prisma/migrations/0_init/migration.sql
 DEPLOYMENT.md
-RELEASE_GUIDE.md 
-tools/migrate_old_data.py
+RELEASE_GUIDE.md
 tools/MIGRATION_GUIDE.md
+.gitignore
+prisma/schema.prisma

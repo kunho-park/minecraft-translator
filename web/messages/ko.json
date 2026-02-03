@@ -1,7 +1,7 @@
 {
     "common": {
-        "siteName": "모드팩 번역소",
-        "siteDescription": "마인크래프트 모드팩 번역을 공유하는 곳",
+        "siteName": "마인크래프트 번역소",
+        "siteDescription": "마인크래프트 번역을 공유하는 곳",
         "search": "검색",
         "searchPlaceholder": "모드팩 검색...",
         "loading": "로딩 중...",
@@ -26,6 +26,7 @@
     "nav": {
         "home": "홈",
         "modpacks": "모드팩",
+        "maps": "맵",
         "upload": "업로드",
         "myUploads": "내 업로드",
         "admin": "관리",
@@ -34,14 +35,24 @@
     },
     "home": {
         "hero": {
-            "title": "마인크래프트 모드팩 번역",
-            "subtitle": "커뮤니티가 만든 고품질 번역을 찾아보세요",
-            "searchPlaceholder": "모드팩 이름으로 검색..."
+            "title": "마인크래프트 번역소",
+            "subtitle": "모드팩, 맵 등 다양한 번역을 찾아보세요",
+            "searchPlaceholder": "모드팩 또는 맵 이름으로 검색..."
         },
         "sections": {
             "latest": "최신 번역",
             "popular": "인기 번역",
             "viewAll": "전체 보기"
+        }
+    },
+    "maps": {
+        "title": "번역된 맵",
+        "noResults": "검색 결과가 없습니다",
+        "uploadTranslation": "맵 번역 업로드",
+        "info": {
+            "author": "제작자",
+            "version": "버전",
+            "downloads": "다운로드 수"
         }
     },
     "modpacks": {
@@ -289,7 +300,7 @@
         "zh_tw": "중국어 (번체)"
     },
     "footer": {
-        "description": "마인크래프트 모드팩 번역을 공유하는 커뮤니티",
+        "description": "마인크래프트 번역을 공유하는 커뮤니티",
         "links": {
             "github": "GitHub",
             "discord": "Discord"

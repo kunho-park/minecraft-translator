@@ -21,6 +21,7 @@ services:
       - DISCORD_ADMIN_WEBHOOK_URL=${DISCORD_ADMIN_WEBHOOK_URL}
     volumes:
       - ./web/uploads:/app/uploads
+      - ./web/public/uploads:/app/public/uploads
       - ./web/prisma:/app/prisma
     restart: unless-stopped
     healthcheck:
