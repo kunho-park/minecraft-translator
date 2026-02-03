@@ -42,17 +42,10 @@ export async function POST(
       );
     }
 
-    // Delete uploaded files
-    try {
-      const packDir = path.join(UPLOADS_DIR, id);
-      await fs.rm(packDir, { recursive: true, force: true });
-    } catch {
-      // Ignore file deletion errors
-    }
-
-    // Delete from database
-    await prisma.translationPack.delete({
+    // Update status to rejected instead of deleting
+    await prisma.translationPack.update({
       where: { id },
+      data: { status: "rejected" },
     });
 
     return NextResponse.json({ success: true });

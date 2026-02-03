@@ -197,7 +197,7 @@
         },
         "metadata": {
             "version": "모드팩 버전",
-            "versionPlaceholder": "예: 1.20.1-2.0.0",
+            "versionPlaceholder": "예: 1.0.0 (마인크래프트 버전 아님)",
             "sourceLang": "원본 언어",
             "targetLang": "번역 언어",
             "translationType": "번역 방식",
@@ -216,7 +216,8 @@
             "title": "업로드 완료!",
             "message": "번역이 성공적으로 업로드되었습니다. 관리자 검수 후 공개됩니다."
         },
-        "anonymous": "익명으로 업로드",
+        "loginRequired": "로그인이 필요합니다",
+        "loginDescription": "번역을 업로드하려면 로그인이 필요합니다.",
         "submitButton": "업로드"
     },
     "review": {

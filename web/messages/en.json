@@ -197,7 +197,7 @@
         },
         "metadata": {
             "version": "Modpack Version",
-            "versionPlaceholder": "e.g., 1.20.1-2.0.0",
+            "versionPlaceholder": "e.g., 1.0.0 (Not Minecraft Version)",
             "sourceLang": "Source Language",
             "targetLang": "Target Language",
             "translationType": "Translation Method",
@@ -216,7 +216,8 @@
             "title": "Upload Complete!",
             "message": "Your translation has been uploaded successfully. It will be public after admin review."
         },
-        "anonymous": "Upload anonymously",
+        "loginRequired": "Login Required",
+        "loginDescription": "You need to login to upload translations.",
         "submitButton": "Upload"
     },
     "review": {

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import Image from "next/image";
 import {
     Search,
@@ -40,7 +40,7 @@ function UploadContent() {
     const t = useTranslations();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { data: session } = useSession();
+    const { data: session, status } = useSession();
 
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -65,7 +65,6 @@ function UploadContent() {
     const [batchSize, setBatchSize] = useState("");
     const [usedGlossary, setUsedGlossary] = useState(false);
     const [reviewed, setReviewed] = useState(false);
-    const [anonymous, setAnonymous] = useState(false);
 
     // Auto-search if modpack ID is in URL
     useEffect(() => {
@@ -135,7 +134,6 @@ function UploadContent() {
                 formData.append("usedGlossary", usedGlossary.toString());
             }
             formData.append("reviewed", reviewed.toString());
-            formData.append("anonymous", anonymous.toString());
             if (resourcePack) formData.append("resourcePack", resourcePack);
             if (overrideFile) formData.append("overrideFile", overrideFile);
 
@@ -156,6 +154,27 @@ function UploadContent() {
             setLoading(false);
         }
     };
+
+    if (status === "loading") {
+        return <LoadingFallback />;
+    }
+
+    if (status === "unauthenticated") {
+        return (
+            <div className="max-w-2xl mx-auto px-4 py-16 text-center animate-fade-in">
+                <div className="w-16 h-16 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center mx-auto mb-6">
+                    <Upload className="w-8 h-8 text-[var(--text-muted)]" />
+                </div>
+                <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">
+                    {t("upload.loginRequired")}
+                </h1>
+                <p className="text-[var(--text-secondary)] mb-8">
+                    {t("upload.loginDescription")}
+                </p>
+                <Button onClick={() => signIn("discord")}>{t("auth.signIn")}</Button>
+            </div>
+        );
+    }
 
     if (success) {
         return (
@@ -427,8 +446,8 @@ function UploadContent() {
                                     type="button"
                                     onClick={() => setIsManualTranslation(false)}
                                     className={`flex-1 p-4 rounded-lg border-2 transition-all ${!isManualTranslation
-                                            ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"
-                                            : "border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+                                        ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"
+                                        : "border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
                                         }`}
                                 >
                                     <div className="font-medium">{t("upload.metadata.aiTranslation")}</div>
@@ -438,8 +457,8 @@ function UploadContent() {
                                     type="button"
                                     onClick={() => setIsManualTranslation(true)}
                                     className={`flex-1 p-4 rounded-lg border-2 transition-all ${isManualTranslation
-                                            ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"
-                                            : "border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+                                        ? "border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"
+                                        : "border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
                                         }`}
                                 >
                                     <div className="font-medium">{t("upload.metadata.manualTranslation")}</div>
@@ -577,20 +596,6 @@ function UploadContent() {
                                     {t("upload.metadata.reviewed")}
                                 </span>
                             </label>
-
-                            {!session && (
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={anonymous}
-                                        onChange={(e) => setAnonymous(e.target.checked)}
-                                        className="w-5 h-5 rounded border-[var(--border-primary)] bg-[var(--bg-secondary)]"
-                                    />
-                                    <span className="text-sm text-[var(--text-secondary)]">
-                                        {t("upload.anonymous")}
-                                    </span>
-                                </label>
-                            )}
                         </div>
                     </div>
 

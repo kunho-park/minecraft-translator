@@ -22,6 +22,9 @@ async function ensureUploadsDir() {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const formData = await request.formData();
     const curseforgeId = formData.get("curseforgeId") as string;
@@ -36,7 +39,6 @@ export async function POST(request: NextRequest) {
     const reviewed = formData.get("reviewed") === "true";
     const resourcePack = formData.get("resourcePack") as File | null;
     const overrideFile = formData.get("overrideFile") as File | null;
-    const anonymous = formData.get("anonymous") === "true";
 
     // 번역 통계 필드
     const fileCount = formData.get("fileCount") as string | null;
@@ -132,7 +134,7 @@ export async function POST(request: NextRequest) {
         id: packId,
         modpackId: modpack.id,
         modpackVersion,
-        userId: !anonymous && session?.user?.id ? session.user.id : null,
+        userId: session.user.id,
         sourceLang,
         targetLang,
         status: "pending",
@@ -162,7 +164,7 @@ export async function POST(request: NextRequest) {
       modpackId: modpack.id,
       modpackName: modpack.name,
       modpackVersion: translationPack.modpackVersion,
-      uploaderName: !anonymous ? session?.user?.name : undefined,
+      uploaderName: session.user.name,
       sourceLang: translationPack.sourceLang,
       targetLang: translationPack.targetLang,
       isManualTranslation: translationPack.isManualTranslation,
