@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@prisma/client": "6",
+    "@tailwindcss/typography": "^0.5.19",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "lucide-react": "^0.562.0",
@@ -19,6 +20,9 @@
     "prisma": "6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

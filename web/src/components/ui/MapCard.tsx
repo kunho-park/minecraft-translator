@@ -4,6 +4,8 @@ import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { Download, Languages, User, ArrowUpRight } from "lucide-react";
 import Image from "next/image";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface MapCardProps {
     map: {
@@ -54,6 +56,7 @@ export default function MapCard({ map }: MapCardProps) {
                                 alt={map.name}
                                 width={72}
                                 height={72}
+                                unoptimized
                                 className="w-[72px] h-[72px] rounded-xl object-cover ring-2 ring-[var(--border-primary)] group-hover:ring-[var(--accent-primary)]/30 transition-all"
                             />
                         ) : (
@@ -104,9 +107,27 @@ export default function MapCard({ map }: MapCardProps) {
                 </div>
 
                 {/* Summary */}
-                <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mt-4 leading-relaxed flex-1">
-                    {map.summary}
-                </p>
+                <div className="text-sm text-[var(--text-secondary)] line-clamp-2 mt-4 leading-relaxed flex-1 overflow-hidden break-words [overflow-wrap:anywhere]">
+                    <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                            p: ({ node, ...props }) => <span {...props} />,
+                            a: ({ node, href, ...props }) => <span className="underline" {...props} />,
+                            h1: ({ node, ...props }) => <span className="font-bold" {...props} />,
+                            h2: ({ node, ...props }) => <span className="font-bold" {...props} />,
+                            h3: ({ node, ...props }) => <span className="font-bold" {...props} />,
+                            h4: ({ node, ...props }) => <span className="font-bold" {...props} />,
+                            h5: ({ node, ...props }) => <span className="font-bold" {...props} />,
+                            h6: ({ node, ...props }) => <span className="font-bold" {...props} />,
+                            hr: () => null,
+                            ul: ({ node, ...props }) => <span {...props} />,
+                            ol: ({ node, ...props }) => <span {...props} />,
+                            li: ({ node, ...props }) => <span {...props} />,
+                        }}
+                    >
+                        {map.summary}
+                    </ReactMarkdown>
+                </div>
 
                 {/* Stats */}
                 <div className="flex items-center gap-6 mt-4 pt-4 border-t border-[var(--border-secondary)]">

@@ -14,6 +14,7 @@ import {
   ExternalLink,
   RefreshCw,
   LogIn,
+  Map as MapIcon,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 
@@ -37,10 +38,27 @@ interface TranslationUpload {
   };
 }
 
+interface MapTranslationUpload {
+  id: string;
+  status: "pending" | "approved" | "rejected";
+  downloadCount: number;
+  createdAt: string;
+  updatedAt: string;
+  map: {
+    id: number;
+    name: string;
+    thumbnailUrl: string | null;
+  };
+}
+
+type UploadItem =
+  | (TranslationUpload & { type: "modpack" })
+  | (MapTranslationUpload & { type: "map" });
+
 export default function MyUploadsPage() {
   const t = useTranslations();
   const { data: session, status } = useSession();
-  const [uploads, setUploads] = useState<TranslationUpload[]>([]);
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +71,22 @@ export default function MyUploadsPage() {
         throw new Error("Failed to fetch uploads");
       }
       const data = await res.json();
-      setUploads(data.uploads || []);
+
+      const modpackUploads = (data.uploads || []).map((u: any) => ({
+        ...u,
+        type: "modpack",
+      }));
+      const mapUploads = (data.mapUploads || []).map((u: any) => ({
+        ...u,
+        type: "map",
+      }));
+
+      const allUploads = [...modpackUploads, ...mapUploads].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      setUploads(allUploads);
     } catch (err) {
       setError(t("common.error"));
     } finally {
@@ -102,7 +135,7 @@ export default function MyUploadsPage() {
         <p className="text-[var(--text-secondary)] mb-8">
           {t("myUploads.loginDescription")}
         </p>
-        <Button onClick={() => window.location.href = "/api/auth/signin"}>
+        <Button onClick={() => (window.location.href = "/api/auth/signin")}>
           {t("auth.signIn")}
         </Button>
       </div>
@@ -171,58 +204,98 @@ export default function MyUploadsPage() {
         </div>
       )}
 
-      {/* Uploads List - Flattened schema */}
+      {/* Uploads List */}
       {uploads.length > 0 ? (
         <div className="space-y-4">
           {uploads.map((upload) => (
             <div key={upload.id} className="card p-5">
               <div className="flex flex-col md:flex-row gap-4">
-                {/* Modpack Info */}
+                {/* Info */}
                 <div className="flex items-start gap-4 flex-1">
-                  {upload.modpack.logoUrl ? (
+                  {upload.type === "modpack" ? (
+                    upload.modpack.logoUrl ? (
+                      <Image
+                        src={upload.modpack.logoUrl}
+                        alt={upload.modpack.name}
+                        width={64}
+                        height={64}
+                        className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center flex-shrink-0">
+                        <span className="text-xl font-bold text-[var(--text-muted)]">
+                          {upload.modpack.name.charAt(0)}
+                        </span>
+                      </div>
+                    )
+                  ) : upload.map.thumbnailUrl ? (
                     <Image
-                      src={upload.modpack.logoUrl}
-                      alt={upload.modpack.name}
+                      src={upload.map.thumbnailUrl}
+                      alt={upload.map.name}
                       width={64}
                       height={64}
+                      unoptimized
                       className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                     />
                   ) : (
                     <div className="w-16 h-16 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center flex-shrink-0">
                       <span className="text-xl font-bold text-[var(--text-muted)]">
-                        {upload.modpack.name.charAt(0)}
+                        {upload.map.name.charAt(0)}
                       </span>
                     </div>
                   )}
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-semibold text-[var(--text-primary)] truncate">
-                        {upload.modpack.name}
+                        {upload.type === "modpack"
+                          ? upload.modpack.name
+                          : upload.map.name}
                       </h3>
                       <span className={`badge ${getStatusBadge(upload.status)}`}>
                         {t(`translation.status.${upload.status}` as never)}
                       </span>
+                      {upload.type === "map" && (
+                        <span className="badge badge-info flex items-center gap-1">
+                          <MapIcon className="w-3 h-3" />
+                          Map
+                        </span>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-3 text-sm text-[var(--text-secondary)]">
-                      <span>
-                        {t(`languages.${upload.sourceLang}` as never)} →{" "}
-                        {t(`languages.${upload.targetLang}` as never)}
-                      </span>
+                      {upload.type === "modpack" ? (
+                        <>
+                          <span>
+                            {t(`languages.${upload.sourceLang}` as never)} →{" "}
+                            {t(`languages.${upload.targetLang}` as never)}
+                          </span>
+                          <span>•</span>
+                          <span>{upload.modpackVersion}</span>
+                        </>
+                      ) : (
+                        <span>Map Translation</span>
+                      )}
                       <span>•</span>
-                      <span>{upload.modpackVersion}</span>
-                      <span>•</span>
                       <span>
-                        {t("myUploads.uploadedAt")}: {new Date(upload.createdAt).toLocaleDateString()}
+                        {t("myUploads.uploadedAt")}:{" "}
+                        {new Date(upload.createdAt).toLocaleDateString()}
                       </span>
                     </div>
                     <div className="flex items-center gap-4 mt-2 text-sm text-[var(--text-muted)]">
+                      {upload.type === "modpack" && (
+                        <>
+                          <span>
+                            {upload.isManualTranslation
+                              ? t("translation.metadata.manualTranslation")
+                              : upload.llmModel ||
+                              t("translation.metadata.aiTranslation")}
+                          </span>
+                          <span>•</span>
+                        </>
+                      )}
                       <span>
-                        {upload.isManualTranslation
-                          ? t("translation.metadata.manualTranslation")
-                          : upload.llmModel || t("translation.metadata.aiTranslation")}
+                        {upload.downloadCount} {t("modpacks.card.downloads")}
                       </span>
-                      <span>•</span>
-                      <span>{upload.downloadCount} {t("modpacks.card.downloads")}</span>
                     </div>
                   </div>
                 </div>
@@ -231,7 +304,13 @@ export default function MyUploadsPage() {
                 <div className="flex items-center gap-3">
                   {getStatusIcon(upload.status)}
                   {upload.status === "approved" && (
-                    <Link href={`/modpacks/${upload.modpack.id}`}>
+                    <Link
+                      href={
+                        upload.type === "modpack"
+                          ? `/modpacks/${upload.modpack.id}`
+                          : `/maps/${upload.map.id}`
+                      }
+                    >
                       <Button variant="secondary" size="sm">
                         <ExternalLink className="w-4 h-4" />
                         {t("myUploads.viewPage")}

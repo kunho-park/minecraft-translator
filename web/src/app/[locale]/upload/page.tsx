@@ -104,6 +104,8 @@ function UploadContent() {
     const [mapOverrideFileLink, setMapOverrideFileLink] = useState("");
 
     const [mapVersion, setMapVersion] = useState("");
+    const [mapOriginalLink, setMapOriginalLink] = useState("");
+    const [mapMinecraftVersion, setMapMinecraftVersion] = useState("");
 
     // Auto-search if modpack ID is in URL
     useEffect(() => {
@@ -285,6 +287,8 @@ function UploadContent() {
             const formData = new FormData();
             formData.append("mapId", mapId!.toString());
             formData.append("version", mapVersion);
+            if (mapOriginalLink) formData.append("originalLink", mapOriginalLink);
+            if (mapMinecraftVersion) formData.append("minecraftVersion", mapMinecraftVersion);
 
             if (mapResourcePackType === "file" && mapResourcePack) {
                 formData.append("resourcePack", mapResourcePack);
@@ -942,7 +946,7 @@ function UploadContent() {
                                             />
                                         </label>
                                         <label className="block">
-                                            <span className="text-sm text-[var(--text-secondary)] mb-2 block">원본 링크</span>
+                                            <span className="text-sm text-[var(--text-secondary)] mb-2 block">맵 다운로드 링크</span>
                                             <input
                                                 type="url"
                                                 value={newMapLink}
@@ -1003,18 +1007,52 @@ function UploadContent() {
                                     "mapOverrideFile"
                                 )}
 
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <label className="block">
+                                        <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                            맵 버전 *
+                                        </span>
+                                        <input
+                                            type="text"
+                                            value={mapVersion}
+                                            onChange={(e) => setMapVersion(e.target.value)}
+                                            placeholder="예: 1.0.0"
+                                            className="w-full"
+                                            required
+                                        />
+                                    </label>
+                                    <label className="block">
+                                        <span className="text-sm text-[var(--text-secondary)] mb-2 block">
+                                            마인크래프트 버전
+                                        </span>
+                                        <input
+                                            type="text"
+                                            value={mapMinecraftVersion}
+                                            onChange={(e) => setMapMinecraftVersion(e.target.value)}
+                                            placeholder="예: 1.21.4"
+                                            className="w-full"
+                                        />
+                                    </label>
+                                </div>
+
                                 <label className="block">
                                     <span className="text-sm text-[var(--text-secondary)] mb-2 block">
-                                        맵 버전 *
+                                        맵 다운로드 링크
                                     </span>
-                                    <input
-                                        type="text"
-                                        value={mapVersion}
-                                        onChange={(e) => setMapVersion(e.target.value)}
-                                        placeholder="예: 1.0.0"
-                                        className="w-full"
-                                        required
-                                    />
+                                    <p className="text-xs text-[var(--text-muted)] mb-2">
+                                        이 버전에 대한 원본 맵 다운로드 링크입니다. 미설정 시 맵 시리즈의 링크가 사용됩니다.
+                                    </p>
+                                    <div className="relative">
+                                        <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] pointer-events-none" />
+                                        <input
+                                            type="url"
+                                            value={mapOriginalLink}
+                                            onChange={(e) => setMapOriginalLink(e.target.value)}
+                                            placeholder="https://..."
+                                            className="w-full pr-4 py-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-primary)] focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-primary)]/20 transition-all"
+                                            style={{ paddingLeft: "3.5rem" }}
+                                        />
+                                    </div>
                                 </label>
                             </div>
 

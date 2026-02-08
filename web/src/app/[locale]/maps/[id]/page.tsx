@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import type { Metadata, ResolvingMetadata } from "next";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import {
     Download,
     ExternalLink,
@@ -11,6 +13,9 @@ import {
     User,
     Calendar,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import Button from "@/components/ui/Button";
 import MapTranslationList from "@/components/MapTranslationList";
 import MapAdminActions from "@/components/MapAdminActions";
@@ -64,6 +69,8 @@ export default async function MapDetailPage({
     const { locale, id } = await params;
     setRequestLocale(locale);
     const t = await getTranslations();
+    const session = await getServerSession(authOptions);
+    const isAdmin = session?.user?.isAdmin === true;
 
     const mapId = parseInt(id, 10);
     let map = null;
@@ -73,7 +80,7 @@ export default async function MapDetailPage({
             where: { id: mapId },
             include: {
                 translations: {
-                    where: { status: "approved" },
+                    ...(isAdmin ? {} : { where: { status: "approved" } }),
                     include: {
                         user: {
                             select: { name: true, avatar: true },
@@ -144,6 +151,7 @@ export default async function MapDetailPage({
                             alt={map.name}
                             width={128}
                             height={128}
+                            unoptimized
                             className="w-32 h-32 rounded-xl object-cover flex-shrink-0"
                         />
                     ) : (
@@ -165,7 +173,11 @@ export default async function MapDetailPage({
                                 {map.author}
                             </p>
                         )}
-                        <p className="text-[var(--text-secondary)] mb-4">{map.summary}</p>
+                        <div className="prose prose-invert max-w-none mb-4 text-[var(--text-secondary)]">
+                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                                {map.summary}
+                            </ReactMarkdown>
+                        </div>
 
                         {/* Stats */}
                         <div className="flex items-center gap-6 text-sm text-[var(--text-muted)]">
@@ -192,9 +204,9 @@ export default async function MapDetailPage({
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
-                                <Button variant="secondary" className="w-full">
+                                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white border-amber-500 font-semibold shadow-lg shadow-amber-500/20">
                                     <ExternalLink className="w-4 h-4" />
-                                    원본 링크
+                                    맵 다운로드 링크
                                 </Button>
                             </a>
                         )}
@@ -208,6 +220,8 @@ export default async function MapDetailPage({
                     createdAt: t.createdAt.toISOString(),
                 }))}
                 mapId={map.id}
+                mapOriginalLink={map.originalLink}
+                isAdmin={isAdmin}
             />
         </div>
     );

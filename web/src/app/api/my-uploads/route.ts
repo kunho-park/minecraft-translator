@@ -12,7 +12,7 @@ export async function GET() {
 
   try {
     // Flattened schema - no versions
-    const uploads = await prisma.translationPack.findMany({
+    const translationPacks = await prisma.translationPack.findMany({
       where: {
         userId: session.user.id,
       },
@@ -31,7 +31,28 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({ uploads });
+    const mapTranslations = await prisma.mapTranslation.findMany({
+      where: {
+        userId: session.user.id,
+      },
+      include: {
+        map: {
+          select: {
+            id: true,
+            name: true,
+            thumbnailUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return NextResponse.json({
+      uploads: translationPacks,
+      mapUploads: mapTranslations,
+    });
   } catch (error) {
     console.error("Error fetching user uploads:", error);
     return NextResponse.json(

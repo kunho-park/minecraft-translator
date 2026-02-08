@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import { Link } from "@/i18n/navigation";
+import { useRouter } from "next/navigation";
 import {
   User,
   Star,
@@ -24,9 +25,15 @@ import {
   Download,
   ThumbsUp,
   Filter,
-  ArrowUpDown
+  ArrowUpDown,
+  Edit,
+  Trash2,
+  Loader2,
+  Save,
+  AlertCircle,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
+import Modal from "@/components/ui/Modal";
 import TranslationDownloadActions from "@/components/TranslationDownloadActions";
 
 export interface TranslationPack {
@@ -34,6 +41,7 @@ export interface TranslationPack {
   sourceLang: string;
   targetLang: string;
   modpackVersion: string;
+  status: string;
   createdAt: string;
   isManualTranslation: boolean;
   llmModel: string | null;
@@ -76,6 +84,7 @@ interface TranslationListProps {
   worksStats: Record<string, WorksStats>;
   modpackId: number;
   modpackCurseforgeId: number;
+  isAdmin?: boolean;
 }
 
 export default function TranslationList({
@@ -83,11 +92,17 @@ export default function TranslationList({
   reviewStats,
   worksStats,
   modpackId,
-  modpackCurseforgeId
+  modpackCurseforgeId,
+  isAdmin = false,
 }: TranslationListProps) {
   const t = useTranslations();
+  const router = useRouter();
   const [sortBy, setSortBy] = useState<"latest" | "downloads" | "rating" | "recommended" | "version">("recommended");
   const [filterVersion, setFilterVersion] = useState<string>("all");
+  const [editingPack, setEditingPack] = useState<TranslationPack | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Helper for semantic version comparison
   const compareVersions = (v1: string, v2: string) => {
@@ -184,6 +199,66 @@ export default function TranslationList({
     return sorted;
   }, [filteredPacks, sortBy, recommendedPackId, reviewStats]);
 
+  // Admin edit handler
+  const handleEditSubmit = async (formData: {
+    modpackVersion: string;
+    sourceLang: string;
+    targetLang: string;
+    status: string;
+    isManualTranslation: boolean;
+    reviewed: boolean;
+  }) => {
+    if (!editingPack) return;
+    setEditLoading(true);
+    try {
+      const res = await fetch(`/api/translations/${editingPack.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      setEditingPack(null);
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      alert("수정 실패");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // Admin delete handler
+  const handleDelete = async (packId: string) => {
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/translations/${packId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+      setDeleteConfirm(null);
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      alert("삭제 실패");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Status badge helper
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "approved":
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/15 text-green-400 border border-green-500/20"><CheckCircle className="w-3 h-3" />승인됨</span>;
+      case "pending":
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-400 border border-yellow-500/20"><AlertCircle className="w-3 h-3" />대기중</span>;
+      case "rejected":
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/15 text-red-400 border border-red-500/20"><X className="w-3 h-3" />거절됨</span>;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -243,6 +318,25 @@ export default function TranslationList({
                     <span className="ml-2 text-xs text-[var(--accent-primary)] font-medium">
                       {t("modpack.recommended.reason")}
                     </span>
+                  </div>
+                )}
+                {/* Admin controls */}
+                {isAdmin && (
+                  <div className="flex items-center justify-between mb-3 pb-3 border-b border-[var(--border-secondary)]">
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(pack.status)}
+                      <span className="text-xs text-[var(--text-muted)]">ID: {pack.id.slice(0, 8)}...</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => setEditingPack(pack)}>
+                        <Edit className="w-3.5 h-3.5" />
+                        수정
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => setDeleteConfirm(pack.id)} className="text-red-400 hover:text-red-300 hover:border-red-500/50">
+                        <Trash2 className="w-3.5 h-3.5" />
+                        삭제
+                      </Button>
+                    </div>
                   </div>
                 )}
                 <div className="flex flex-col lg:flex-row gap-6">
@@ -432,6 +526,160 @@ export default function TranslationList({
           </Link>
         </div>
       )}
+
+      {/* Admin Edit Modal */}
+      {editingPack && (
+        <TranslationEditModal
+          pack={editingPack}
+          loading={editLoading}
+          onClose={() => setEditingPack(null)}
+          onSubmit={handleEditSubmit}
+        />
+      )}
+
+      {/* Admin Delete Confirm Modal */}
+      <Modal
+        isOpen={deleteConfirm !== null}
+        onClose={() => setDeleteConfirm(null)}
+        title="번역 삭제 확인"
+      >
+        <div className="space-y-4">
+          <p className="text-[var(--text-secondary)]">
+            이 번역을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>
+              취소
+            </Button>
+            <Button
+              onClick={() => deleteConfirm && handleDelete(deleteConfirm)}
+              disabled={deleteLoading}
+              className="bg-red-500 hover:bg-red-600 text-white border-red-500"
+            >
+              {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              삭제
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
+  );
+}
+
+// Edit Modal Component
+function TranslationEditModal({
+  pack,
+  loading,
+  onClose,
+  onSubmit,
+}: {
+  pack: TranslationPack;
+  loading: boolean;
+  onClose: () => void;
+  onSubmit: (data: {
+    modpackVersion: string;
+    sourceLang: string;
+    targetLang: string;
+    status: string;
+    isManualTranslation: boolean;
+    reviewed: boolean;
+  }) => void;
+}) {
+  const [formData, setFormData] = useState({
+    modpackVersion: pack.modpackVersion,
+    sourceLang: pack.sourceLang,
+    targetLang: pack.targetLang,
+    status: pack.status,
+    isManualTranslation: pack.isManualTranslation,
+    reviewed: pack.reviewed,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="번역 수정">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">모드팩 버전</label>
+          <input
+            type="text"
+            value={formData.modpackVersion}
+            onChange={(e) => setFormData({ ...formData, modpackVersion: e.target.value })}
+            className="w-full px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">원본 언어</label>
+            <input
+              type="text"
+              value={formData.sourceLang}
+              onChange={(e) => setFormData({ ...formData, sourceLang: e.target.value })}
+              className="w-full px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">번역 언어</label>
+            <input
+              type="text"
+              value={formData.targetLang}
+              onChange={(e) => setFormData({ ...formData, targetLang: e.target.value })}
+              className="w-full px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+              required
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">상태</label>
+          <select
+            value={formData.status}
+            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            className="w-full px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+          >
+            <option value="pending">대기중</option>
+            <option value="approved">승인됨</option>
+            <option value="rejected">거절됨</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-6">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.isManualTranslation}
+              onChange={(e) => setFormData({ ...formData, isManualTranslation: e.target.checked })}
+              className="rounded border-[var(--border-primary)] bg-[var(--bg-input)]"
+            />
+            <span className="text-sm text-[var(--text-secondary)]">수동 번역</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.reviewed}
+              onChange={(e) => setFormData({ ...formData, reviewed: e.target.checked })}
+              className="rounded border-[var(--border-primary)] bg-[var(--bg-input)]"
+            />
+            <span className="text-sm text-[var(--text-secondary)]">검토 완료</span>
+          </label>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            취소
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            저장
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

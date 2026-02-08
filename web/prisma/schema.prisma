@@ -102,20 +102,22 @@ model Map {
 }
 
 model MapTranslation {
-  id            String   @id @default(uuid())
-  mapId         Int
-  map           Map      @relation(fields: [mapId], references: [id], onDelete: Cascade)
-  version       String
-  userId        String?
-  user          User?    @relation(fields: [userId], references: [id])
-  sourceLang    String   @default("en_us")
-  targetLang    String   @default("ko_kr")
-  status          String   @default("pending")
-  resourcePackUrl String?
-  overrideFileUrl String?
-  downloadCount   Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id @default(uuid())
+  mapId            Int
+  map              Map      @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  version          String
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id])
+  sourceLang       String   @default("en_us")
+  targetLang       String   @default("ko_kr")
+  status           String   @default("pending")
+  resourcePackUrl  String?
+  overrideFileUrl  String?
+  originalLink     String?
+  minecraftVersion String?
+  downloadCount    Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([mapId])
   @@index([status])

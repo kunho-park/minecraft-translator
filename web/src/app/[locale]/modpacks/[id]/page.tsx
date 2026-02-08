@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import type { Metadata, ResolvingMetadata } from "next";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 // Force dynamic rendering (no static generation)
 export const dynamic = "force-dynamic";
@@ -65,6 +67,8 @@ export default async function ModpackDetailPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
   const t = await getTranslations();
+  const session = await getServerSession(authOptions);
+  const isAdmin = session?.user?.isAdmin === true;
 
   const modpackId = parseInt(id, 10);
   let modpack = null;
@@ -74,7 +78,7 @@ export default async function ModpackDetailPage({
       where: { id: modpackId },
       include: {
         translationPacks: {
-          where: { status: "approved" },
+          ...(isAdmin ? {} : { where: { status: "approved" } }),
           include: {
             user: {
               select: { name: true, avatar: true },
@@ -284,6 +288,7 @@ export default async function ModpackDetailPage({
         worksStats={worksStatsObj}
         modpackId={modpack.id}
         modpackCurseforgeId={modpack.curseforgeId}
+        isAdmin={isAdmin}
       />
     </div>
   );

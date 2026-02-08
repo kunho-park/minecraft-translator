@@ -21,17 +21,8 @@ export default function MapTranslationDownloadActions({
         const url = type === "resourcepack" ? resourcePackUrl : overrideFileUrl;
         if (!url) return;
 
-        if (url.startsWith("http")) {
-            window.open(url, "_blank");
-        } else {
-            const downloadUrl = `/api/maps/translations/${translationId}/download?type=${type}`;
-            const link = document.createElement("a");
-            link.href = downloadUrl;
-            link.setAttribute("download", "");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+        // Always go through the API to ensure download count is incremented
+        window.open(`/api/maps/translations/${translationId}/download?type=${type}`, "_blank");
     };
 
     return (

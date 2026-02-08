@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* Modern Dark Theme - Clean & Premium */
 :root {
@@ -8,33 +9,33 @@
   --bg-tertiary: #18181b;
   --bg-card: #141416;
   --bg-card-hover: #1c1c1f;
-  
+
   /* Text colors - High contrast */
   --text-primary: #fafafa;
   --text-secondary: #a1a1aa;
   --text-muted: #71717a;
-  
+
   /* Accent colors - Vibrant blue */
   --accent-primary: #3b82f6;
   --accent-secondary: #2563eb;
   --accent-hover: #60a5fa;
-  
+
   /* Status colors */
   --status-success: #22c55e;
   --status-warning: #f59e0b;
   --status-error: #ef4444;
   --status-info: #0ea5e9;
-  
+
   /* Border colors */
   --border-primary: rgba(255, 255, 255, 0.08);
   --border-secondary: rgba(255, 255, 255, 0.04);
-  
+
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.7);
   --shadow-glow: 0 0 40px rgba(59, 130, 246, 0.15);
-  
+
   /* Spacing */
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -78,23 +79,39 @@ body::before {
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
+  background:
     radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59, 130, 246, 0.12) 0%, transparent 60%);
   pointer-events: none;
   z-index: -1;
 }
 
 /* Typography scale */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 1.2;
 }
 
-h1 { font-size: 2.75rem; }
-h2 { font-size: 2rem; }
-h3 { font-size: 1.5rem; }
-h4 { font-size: 1.25rem; }
+h1 {
+  font-size: 2.75rem;
+}
+
+h2 {
+  font-size: 2rem;
+}
+
+h3 {
+  font-size: 1.5rem;
+}
+
+h4 {
+  font-size: 1.25rem;
+}
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
@@ -232,7 +249,9 @@ button {
 }
 
 /* Input styles - Clean & Modern */
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: inherit;
   font-size: 0.9375rem;
   background: var(--bg-tertiary);
@@ -243,18 +262,23 @@ input, textarea, select {
   transition: all 0.15s ease;
 }
 
-input:not([class*="pl-"]), textarea:not([class*="pl-"]), select:not([class*="pl-"]) {
+input:not([class*="pl-"]),
+textarea:not([class*="pl-"]),
+select:not([class*="pl-"]) {
   padding-left: 1rem;
 }
 
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
   background: var(--bg-secondary);
   outline: none;
 }
 
-input::placeholder, textarea::placeholder {
+input::placeholder,
+textarea::placeholder {
   color: var(--text-muted);
 }
 
@@ -280,6 +304,7 @@ input::placeholder, textarea::placeholder {
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -291,11 +316,25 @@ input::placeholder, textarea::placeholder {
 }
 
 /* Stagger animation delay */
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.1s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.2s; }
-.stagger-5 { animation-delay: 0.25s; }
+.stagger-1 {
+  animation-delay: 0.05s;
+}
+
+.stagger-2 {
+  animation-delay: 0.1s;
+}
+
+.stagger-3 {
+  animation-delay: 0.15s;
+}
+
+.stagger-4 {
+  animation-delay: 0.2s;
+}
+
+.stagger-5 {
+  animation-delay: 0.25s;
+}
 
 /* Improved text rendering for Korean */
 :lang(ko) {
@@ -320,7 +359,8 @@ th {
   text-align: left;
 }
 
-td, th {
+td,
+th {
   padding: 1rem;
   border-bottom: 1px solid var(--border-secondary);
 }
@@ -334,18 +374,17 @@ tr:hover td {
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
 }
 
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--bg-tertiary) 25%,
-    var(--bg-card-hover) 50%,
-    var(--bg-tertiary) 75%
-  );
+  background: linear-gradient(90deg,
+      var(--bg-tertiary) 25%,
+      var(--bg-card-hover) 50%,
+      var(--bg-tertiary) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: var(--radius-sm);
@@ -370,6 +409,7 @@ tr:hover td {
     transform: scale(0.8);
     opacity: 1;
   }
+
   100% {
     transform: scale(2);
     opacity: 0;

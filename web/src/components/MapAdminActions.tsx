@@ -106,7 +106,7 @@ export default function MapAdminActions({ map }: MapAdminActionsProps) {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">원본 링크</label>
+                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">맵 다운로드 링크</label>
                                 <input
                                     type="text"
                                     value={formData.originalLink}

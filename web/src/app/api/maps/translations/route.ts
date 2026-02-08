@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
         const overrideFile = formData.get("overrideFile") as File | null;
         const resourcePackLink = formData.get("resourcePackLink") as string | null;
         const overrideFileLink = formData.get("overrideFileLink") as string | null;
+        const originalLink = formData.get("originalLink") as string | null;
+        const minecraftVersion = formData.get("minecraftVersion") as string | null;
 
         if (!mapId || !version || (!resourcePack && !overrideFile && !resourcePackLink && !overrideFileLink)) {
             return NextResponse.json(
@@ -73,6 +75,8 @@ export async function POST(request: NextRequest) {
                 userId: session.user.id,
                 resourcePackUrl,
                 overrideFileUrl,
+                originalLink: originalLink || null,
+                minecraftVersion: minecraftVersion || null,
                 status: "pending",
             },
         });
