@@ -26,6 +26,8 @@ class ValidationType(str, Enum):
     UNTRANSLATED = "untranslated"
     FORMAT_STRING = "format_string"
     LENGTH_RATIO = "length_ratio"
+    GLOSSARY_TERM_MISMATCH = "glossary_term_mismatch"
+    GLOSSARY_NOUN_MISMATCH = "glossary_noun_mismatch"
 
 
 class ValidationIssue(BaseModel):

@@ -7,7 +7,7 @@ import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .glossary import Glossary, ProperNounRule, TermRule
+    from .glossary import FormattingRule, Glossary, ProperNounRule, TermRule
 
 logger = logging.getLogger(__name__)
 
@@ -31,21 +31,24 @@ class GlossaryFilter:
         if not glossary:
             return Glossary()
 
-        # Combine all texts for searching
-        combined_text = " ".join(texts.values()).lower()
+        # Combine all texts for searching (keep both original case and lowercase)
+        combined_text_original = " ".join(texts.values())
+        combined_text = combined_text_original.lower()
 
         # Filter term rules
         filtered_terms = GlossaryFilter._filter_term_rules(
             glossary.term_rules, combined_text
         )
 
-        # Filter proper noun rules
+        # Filter proper noun rules (now checks aliases too)
         filtered_nouns = GlossaryFilter._filter_proper_noun_rules(
             glossary.proper_noun_rules, combined_text
         )
 
-        # Formatting rules are always included (they're general style rules)
-        filtered_rules = glossary.formatting_rules
+        # Filter formatting rules based on keywords (global rules always included)
+        filtered_rules = GlossaryFilter._filter_formatting_rules(
+            glossary.formatting_rules, combined_text_original
+        )
 
         filtered_glossary = Glossary(
             term_rules=filtered_terms,
@@ -54,12 +57,13 @@ class GlossaryFilter:
         )
 
         logger.debug(
-            "Filtered glossary: %d/%d terms, %d/%d proper nouns, %d formatting rules",
+            "Filtered glossary: %d/%d terms, %d/%d proper nouns, %d/%d formatting rules",
             len(filtered_terms),
             len(glossary.term_rules),
             len(filtered_nouns),
             len(glossary.proper_noun_rules),
             len(filtered_rules),
+            len(glossary.formatting_rules),
         )
 
         return filtered_glossary
@@ -96,6 +100,8 @@ class GlossaryFilter:
     ) -> list[ProperNounRule]:
         """Filter proper noun rules to only those that appear in text.
 
+        Checks both source_like and aliases for matches.
+
         Args:
             proper_noun_rules: All proper noun rules
             combined_text: Combined text to search in (lowercase)
@@ -110,5 +116,47 @@ class GlossaryFilter:
             pattern = r"\b" + re.escape(noun.source_like.lower()) + r"\b"
             if re.search(pattern, combined_text):
                 filtered.append(noun)
+                continue
+
+            # Also check aliases for matches
+            for alias in noun.aliases:
+                alias_pattern = r"\b" + re.escape(alias.lower()) + r"\b"
+                if re.search(alias_pattern, combined_text):
+                    filtered.append(noun)
+                    break
+
+        return filtered
+
+    @staticmethod
+    def _filter_formatting_rules(
+        formatting_rules: list[FormattingRule], combined_text: str
+    ) -> list[FormattingRule]:
+        """Filter formatting rules based on keywords.
+
+        Global rules (is_global=True or empty keywords) are always included.
+        Other rules are included only if at least one keyword matches the text.
+
+        Args:
+            formatting_rules: All formatting rules
+            combined_text: Combined text to search in (original case preserved)
+
+        Returns:
+            Filtered formatting rules
+        """
+        filtered = []
+        combined_lower = combined_text.lower()
+
+        for rule in formatting_rules:
+            # Global rules or rules without keywords are always included
+            if rule.is_global or not rule.keywords:
+                filtered.append(rule)
+                continue
+
+            # Check if any keyword appears in the text (case-insensitive)
+            for keyword in rule.keywords:
+                keyword_lower = keyword.lower()
+                if keyword_lower in combined_lower:
+                    filtered.append(rule)
+                    break
 
         return filtered

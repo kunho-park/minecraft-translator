@@ -23,25 +23,39 @@ Return a JSON object containing three lists: 'term_rules', 'proper_noun_rules', 
 # 1. Terminology Rules (term_rules)
 Extract specific game terms (items, blocks, entities, UI).
 - term_ko: The {target_lang} translation.
-- aliases: List of {source_lang} source terms mapped to this translation.
+- preferred_style: Style guide for this term (e.g., "띄어쓰기 유지", "한글 표기", "원문 유지").
+- aliases: List of ALL {source_lang} source terms/variations mapped to this translation (include plural forms, abbreviations, etc.).
 - category: One of [item, block, ui, entity, effect, biome, other].
 - notes: Brief note on usage.
 
 # 2. Proper Noun Rules (proper_noun_rules)
 Extract specific names (places, characters, mods) that require consistent translation.
-- source_like: The original {source_lang} name.
+- source_like: The primary {source_lang} name.
 - preferred_ko: The preferred {target_lang} translation.
+- aliases: List of ALL alternative forms/spellings (e.g., "The Nether", "nether", "NETHER" for source_like "Nether").
 - notes: Reasoning.
 
 # 3. Formatting Rules (formatting_rules)
-Extract general style guidelines (punctuation, placeholders, honorifics).
+Extract style/formatting guidelines. IMPORTANT: Be specific about what patterns to preserve or how to format.
 - rule_name: Short, descriptive name of the rule.
-- description: Clear explanation of the rule.
-- examples: List of valid examples.
+- description: Clear, actionable explanation of the rule.
+- examples: List of concrete before→after examples showing correct application.
+- keywords: List of trigger words/patterns in the source text that indicate this rule should apply. For example, if the rule is about "Lv." notation, keywords would be ["Lv.", "Level", "lv"]. Leave empty ONLY for truly universal rules (like honorifics or general punctuation).
+- is_global: Set to true ONLY for universal style rules that apply to ALL translations (e.g., honorifics, sentence-ending style). Default is false.
+
+## Important: Format Preservation Rules
+Pay special attention to these common formatting patterns and create rules for them:
+- Level notation: "Lv. 1", "Level 1", etc.
+- Stats: "HP", "MP", "SP", "ATK", "DEF", etc.
+- Numeric formats: "x2", "+10%", "1.5x", etc.
+- Roman numerals: "I", "II", "III", "IV", etc.
+- Unit abbreviations that should be preserved
+For each pattern found, create a formatting rule specifying whether to preserve the original format or translate it, with clear examples.
 
 # Constraints
 - Only extract rules clearly supported by the text.
 - Return empty lists if no rules are found for a category.
+- For formatting rules, always provide specific keywords so rules can be filtered per-batch.
 """
 
 
@@ -70,25 +84,39 @@ Return a JSON object containing three lists: 'term_rules', 'proper_noun_rules', 
 # 1. Terminology Rules (term_rules)
 Identify game terms and suggest translations.
 - term_ko: Recommended {target_lang} translation.
-- aliases: List of {source_lang} source terms.
+- preferred_style: Style guide for this term (e.g., "띄어쓰기 유지", "한글 표기", "원문 유지").
+- aliases: List of ALL {source_lang} source terms and variations (include plural forms, abbreviations, etc.).
 - category: One of [item, block, ui, entity, effect, biome, other].
 
 # 2. Proper Noun Rules (proper_noun_rules)
 Identify proper nouns and suggest translations.
-- source_like: The {source_lang} proper noun.
+- source_like: The primary {source_lang} proper noun.
 - preferred_ko: Recommended {target_lang} form (transliteration or translation).
+- aliases: List of ALL alternative forms/spellings of this proper noun.
 
 # 3. Formatting Rules (formatting_rules)
-Suggest style guidelines based on the text structure.
+Suggest style/formatting guidelines based on the text structure.
 - rule_name: Short name of the rule.
-- description: Clear explanation.
-- examples: Examples.
+- description: Clear, actionable explanation.
+- examples: Concrete before→after examples.
+- keywords: Trigger words/patterns that indicate when this rule applies. Leave empty ONLY for universal rules.
+- is_global: true ONLY for universal style rules that apply to ALL translations.
+
+## Important: Format Preservation Rules
+Scan the text for these common patterns and create rules for each one found:
+- Level notation: "Lv. 1", "Level 1", etc. → Decide whether to keep "Lv." or translate to "레벨"
+- Stats abbreviations: "HP", "MP", "SP", "ATK", "DEF" → Decide whether to keep or translate
+- Numeric formats: "x2", "+10%", "1.5x" → Specify how to handle
+- Roman numerals: "I", "II", "III" → Specify preservation rules
+- Unit abbreviations: "mb", "RF", "FE", "EU" → Specify preservation rules
+For each, create a formatting rule with specific keywords for filtering.
 
 {lang_specific}
 
 # Constraints
 - Only propose rules relevant to the text.
 - Return empty lists if uncertain.
+- For formatting rules, always provide specific keywords so rules can be filtered per-batch.
 """
 
 
@@ -130,11 +158,18 @@ Task: Translate {source_lang} text into natural {target_lang} while maintaining 
    - Output: "⟦PH_0_named_placeholder⟧을(를) 처치하세요"
    - WRONG: "⟦PH...⟧을(를) 처치하세요"
 
+## CRITICAL: Glossary Compliance
+**You MUST strictly follow ALL glossary rules provided below.** Glossary rules are non-negotiable:
+- If a Term Rule says "Enchanting Table → 마법 부여대", you MUST use "마법 부여대" every time.
+- If a Proper Noun Rule says "Nether → 네더", you MUST use "네더" every time.
+- If a Formatting Rule says to preserve "Lv." notation, you MUST keep "Lv." as-is.
+- **NEVER** deviate from glossary terms. Consistency across all translations is mandatory.
+
 ## Translation Guidelines
 <quality_standards>
 - **Accuracy**: Preserve original meaning and game mechanics.
 - **Naturalness**: Use fluent {target_lang} gaming terminology.
-- **Consistency**: Apply glossary terms uniformly.
+- **Consistency**: Apply glossary terms uniformly across ALL entries in this batch.
 - **Completeness**: Translate ALL provided items.
 </quality_standards>
 
@@ -143,6 +178,7 @@ Task: Translate {source_lang} text into natural {target_lang} while maintaining 
 - **No Parenthetical English**: Do NOT add English in parentheses (e.g., WRONG: "경험치 (Experience)", RIGHT: "경험치").
 - **No Brackets**: NEVER use square brackets [] around translated terms (e.g., WRONG: "[철] [검]", RIGHT: "철 검").
 - **Player Names**: Preserve ONLY actual player usernames (e.g., "Steve", "Alex").
+- **Format Preservation**: Preserve formatting patterns like "Lv.", stat abbreviations (HP/MP/ATK/DEF), numeric patterns (x2, +10%), and Roman numerals UNLESS a glossary rule explicitly says otherwise.
 </style_preferences>
 
 <examples>
@@ -154,11 +190,18 @@ INCORRECT: "[철] [검]을 제작하려면 [철] [주괴]가 필요합니다"
 
 CORRECT: "힘, 마법, 재주와 같은 적성은 경험치를 사용하여 획득할 수 있습니다."
 INCORRECT: "힘, 마법, 재주와 같은 Aptitudes는 Experience (XP)를 사용하여 획득할 수 있습니다."
+
+CORRECT: "Lv. 5 이상이 필요합니다" (format preserved)
+INCORRECT: "레벨 5 이상이 필요합니다" (format changed without glossary rule)
+
+CORRECT: "HP가 50% 이하일 때 활성화됩니다" (stat abbreviation preserved)
+INCORRECT: "체력이 50퍼센트 이하일 때 활성화됩니다" (unnecessarily translated)
 </examples>
 
 ## Translation Rules
-1. Translate game terminology consistently using the provided glossary.
+1. **Glossary First**: Always check the glossary before translating any term. Glossary rules override your judgment.
 2. Use natural {target_lang} expressions.
+3. **Be consistent**: If the same English term appears multiple times, translate it the same way every time.
 {target_specific_rules}
 
 {glossary_context}

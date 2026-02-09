@@ -414,10 +414,11 @@ class TranslationPipeline:
             else:
                 logger.info("Step 2: Skipping glossary (disabled)")
 
-            # Update translator and reviewer with glossary
+            # Update translator, reviewer, and validator with glossary
             if result.glossary:
                 self.translator.update_glossary(result.glossary)
                 self.reviewer.update_glossary(result.glossary)
+                self.validator.glossary = result.glossary
 
             # Check cancellation
             if self.cancel_check and self.cancel_check():

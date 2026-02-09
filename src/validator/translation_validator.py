@@ -17,6 +17,8 @@ from ..translator.placeholder import PlaceholderProtector
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from ..models import Glossary
+
 logger = logging.getLogger(__name__)
 
 # Maximum acceptable length ratio (translated / source)
@@ -33,11 +35,17 @@ class TranslationValidator:
     - Key matching
     - Length ratios
     - Empty translations
+    - Glossary term consistency
     """
 
-    def __init__(self) -> None:
-        """Initialize the validator."""
+    def __init__(self, glossary: Glossary | None = None) -> None:
+        """Initialize the validator.
+
+        Args:
+            glossary: Optional glossary for consistency checking.
+        """
         self.protector = PlaceholderProtector()
+        self.glossary = glossary
         logger.info("Initialized TranslationValidator")
 
     def validate(
@@ -133,6 +141,13 @@ class TranslationValidator:
             # Check length ratio
             length_issues = self._check_length_ratio(key, source, translated)
             issues.extend(length_issues)
+
+            # Check glossary consistency
+            if self.glossary:
+                glossary_issues = self._check_glossary_consistency(
+                    key, source, translated
+                )
+                issues.extend(glossary_issues)
 
         result = ValidationResult.from_issues(issues)
         logger.info(
@@ -376,6 +391,97 @@ class TranslationValidator:
                     translated_value=translated,
                 )
             )
+
+        return issues
+
+    def _check_glossary_consistency(
+        self,
+        key: str,
+        source: str,
+        translated: str,
+    ) -> list[ValidationIssue]:
+        """Check if translation follows glossary rules.
+
+        Checks:
+        - Term rules: if source contains a glossary alias, translation should contain the term_ko
+        - Proper noun rules: if source contains source_like/alias, translation should contain preferred_ko
+
+        Args:
+            key: Translation key.
+            source: Source text.
+            translated: Translated text.
+
+        Returns:
+            List of validation issues.
+        """
+        issues: list[ValidationIssue] = []
+        if not self.glossary:
+            return issues
+
+        source_lower = source.lower()
+
+        # Check term rules
+        for term in self.glossary.term_rules:
+            # Check if any alias appears in the source
+            alias_found = False
+            matched_alias = ""
+            for alias in term.aliases:
+                pattern = r"\b" + re.escape(alias.lower()) + r"\b"
+                if re.search(pattern, source_lower):
+                    alias_found = True
+                    matched_alias = alias
+                    break
+
+            if alias_found and term.term_ko not in translated:
+                issues.append(
+                    ValidationIssue(
+                        issue_type=ValidationType.GLOSSARY_TERM_MISMATCH,
+                        severity=ValidationSeverity.WARNING,
+                        key=key,
+                        message=(
+                            f"Glossary term mismatch: source has '{matched_alias}' "
+                            f"but translation doesn't contain '{term.term_ko}'"
+                        ),
+                        source_value=source,
+                        translated_value=translated,
+                        suggestion=f"Use glossary term: '{term.term_ko}'",
+                    )
+                )
+
+        # Check proper noun rules
+        for noun in self.glossary.proper_noun_rules:
+            # Check if source_like or any alias appears in the source
+            noun_found = False
+            matched_noun = ""
+
+            pattern = r"\b" + re.escape(noun.source_like.lower()) + r"\b"
+            if re.search(pattern, source_lower):
+                noun_found = True
+                matched_noun = noun.source_like
+
+            if not noun_found:
+                for alias in noun.aliases:
+                    alias_pattern = r"\b" + re.escape(alias.lower()) + r"\b"
+                    if re.search(alias_pattern, source_lower):
+                        noun_found = True
+                        matched_noun = alias
+                        break
+
+            if noun_found and noun.preferred_ko not in translated:
+                issues.append(
+                    ValidationIssue(
+                        issue_type=ValidationType.GLOSSARY_NOUN_MISMATCH,
+                        severity=ValidationSeverity.WARNING,
+                        key=key,
+                        message=(
+                            f"Glossary proper noun mismatch: source has '{matched_noun}' "
+                            f"but translation doesn't contain '{noun.preferred_ko}'"
+                        ),
+                        source_value=source,
+                        translated_value=translated,
+                        suggestion=f"Use glossary proper noun: '{noun.preferred_ko}'",
+                    )
+                )
 
         return issues
 

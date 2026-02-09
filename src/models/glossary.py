@@ -57,7 +57,7 @@ class ProperNounRule(BaseModel):
 
     source_like: str = Field(
         ...,
-        description="Original English proper noun",
+        description="Original English proper noun (primary form)",
         examples=["Nether", "Ender", "Mekanism"],
     )
     preferred_ko: str = Field(
@@ -65,23 +65,34 @@ class ProperNounRule(BaseModel):
         description="Preferred Korean translation",
         examples=["네더", "엔더", "메카니즘"],
     )
+    aliases: list[str] = Field(
+        default_factory=list,
+        description="Alternative forms/spellings that should also match this rule",
+        examples=[["The Nether", "nether"], ["End", "The End", "Ender"]],
+    )
     notes: str = Field(
         default="",
         description="Additional notes about usage",
     )
+
+    @field_validator("aliases")
+    @classmethod
+    def sort_proper_noun_aliases(cls, v: list[str]) -> list[str]:
+        """Sort aliases for consistent deduplication."""
+        return sorted(list(set(v)))
 
 
 class FormattingRule(BaseModel):
     """A formatting/style rule for translations.
 
     Defines general style guidelines for the translation,
-    such as honorifics, punctuation, etc.
+    such as honorifics, punctuation, format preservation, etc.
     """
 
     rule_name: str = Field(
         ...,
         description="Name of the formatting rule",
-        examples=["존댓말", "조사 처리", "따옴표"],
+        examples=["존댓말", "조사 처리", "따옴표", "레벨 표기 보존"],
     )
     description: str = Field(
         ...,
@@ -90,6 +101,22 @@ class FormattingRule(BaseModel):
     examples: list[str] = Field(
         default_factory=list,
         description="Example applications of the rule",
+    )
+    keywords: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Trigger keywords/patterns that indicate when this rule applies. "
+            "If empty, the rule is considered global and always included. "
+            "Case-insensitive matching is used."
+        ),
+        examples=[["Lv.", "Level", "lv"], ["HP", "MP", "SP"]],
+    )
+    is_global: bool = Field(
+        default=False,
+        description=(
+            "If True, this rule is always included regardless of keywords. "
+            "Use for universal style rules like honorifics or punctuation."
+        ),
     )
 
 
@@ -145,7 +172,7 @@ class Glossary(BaseModel):
         # Create sets of existing items for deduplication
         existing_terms = {(t.term_ko, tuple(t.aliases)) for t in self.term_rules}
         existing_nouns = {
-            (n.source_like, n.preferred_ko) for n in self.proper_noun_rules
+            (n.source_like.lower(), n.preferred_ko) for n in self.proper_noun_rules
         }
         existing_rules = {r.rule_name for r in self.formatting_rules}
 
@@ -162,7 +189,7 @@ class Glossary(BaseModel):
                 new_terms.append(t)
 
         for n in other.proper_noun_rules:
-            key = (n.source_like, n.preferred_ko)
+            key = (n.source_like.lower(), n.preferred_ko)
             if key not in existing_nouns:
                 existing_nouns.add(key)
                 new_nouns.append(n)
@@ -197,24 +224,37 @@ class Glossary(BaseModel):
         """Convert glossary to a string for LLM context.
 
         Returns:
-            Human-readable glossary summary.
+            Human-readable glossary summary with full details.
         """
         lines: list[str] = []
 
         if self.term_rules:
-            lines.append("## Term Rules")
+            lines.append("## Term Rules (MUST follow these translations)")
             for term in self.term_rules:
                 aliases = ", ".join(term.aliases) if term.aliases else "N/A"
-                lines.append(f"- {term.term_ko} ({aliases}): {term.notes}")
+                line = f"- **{aliases}** → **{term.term_ko}**"
+                if term.preferred_style:
+                    line += f" (스타일: {term.preferred_style})"
+                if term.notes:
+                    line += f" — {term.notes}"
+                lines.append(line)
 
         if self.proper_noun_rules:
-            lines.append("\n## Proper Noun Rules")
+            lines.append("\n## Proper Noun Rules (MUST use these translations)")
             for noun in self.proper_noun_rules:
-                lines.append(f"- {noun.source_like} → {noun.preferred_ko}")
+                line = f"- **{noun.source_like}** → **{noun.preferred_ko}**"
+                if noun.aliases:
+                    line += f" (변형: {', '.join(noun.aliases)})"
+                if noun.notes:
+                    line += f" — {noun.notes}"
+                lines.append(line)
 
         if self.formatting_rules:
-            lines.append("\n## Formatting Rules")
+            lines.append("\n## Formatting Rules (MUST follow these rules)")
             for rule in self.formatting_rules:
-                lines.append(f"- {rule.rule_name}: {rule.description}")
+                lines.append(f"- **{rule.rule_name}**: {rule.description}")
+                if rule.examples:
+                    for example in rule.examples:
+                        lines.append(f"  - 예: {example}")
 
         return "\n".join(lines)
