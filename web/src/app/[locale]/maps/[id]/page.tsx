@@ -85,6 +85,9 @@ export default async function MapDetailPage({
                         user: {
                             select: { name: true, avatar: true },
                         },
+                        _count: {
+                            select: { reviews: true },
+                        },
                     },
                     orderBy: { createdAt: "desc" },
                 },
@@ -114,6 +117,46 @@ export default async function MapDetailPage({
 
     // Calculate total downloads
     const totalDownloads = map.translations.reduce((sum, t) => sum + t.downloadCount, 0);
+
+    // Get review stats for all map translations
+    const mapReviewStats = await prisma.mapReview.groupBy({
+        by: ["mapTranslationId"],
+        where: {
+            mapTranslationId: {
+                in: map.translations.map((t) => t.id),
+            },
+        },
+        _avg: {
+            rating: true,
+        },
+    });
+
+    const reviewStatsObj: Record<string, { avgRating: number }> = {};
+    mapReviewStats.forEach((r) => {
+        reviewStatsObj[r.mapTranslationId] = { avgRating: r._avg.rating || 0 };
+    });
+
+    // Get works count
+    const mapWorksCount = await prisma.mapReview.groupBy({
+        by: ["mapTranslationId", "works"],
+        where: {
+            mapTranslationId: {
+                in: map.translations.map((t) => t.id),
+            },
+        },
+        _count: true,
+    });
+
+    const worksStatsObj: Record<string, { works: number; notWorks: number }> = {};
+    mapWorksCount.forEach((w) => {
+        const current = worksStatsObj[w.mapTranslationId] || { works: 0, notWorks: 0 };
+        if (w.works) {
+            current.works = w._count;
+        } else {
+            current.notWorks = w._count;
+        }
+        worksStatsObj[w.mapTranslationId] = current;
+    });
 
     // JSON-LD for SEO
     const jsonLd = {
@@ -221,6 +264,8 @@ export default async function MapDetailPage({
                 }))}
                 mapId={map.id}
                 mapOriginalLink={map.originalLink}
+                reviewStats={reviewStatsObj}
+                worksStats={worksStatsObj}
                 isAdmin={isAdmin}
             />
         </div>

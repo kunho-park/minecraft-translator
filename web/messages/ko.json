@@ -37,11 +37,22 @@
         "hero": {
             "title": "마인크래프트 번역소",
             "subtitle": "모드팩, 맵 등 다양한 번역을 찾아보세요",
-            "searchPlaceholder": "모드팩 또는 맵 이름으로 검색..."
+            "searchPlaceholder": "모드팩 또는 맵 이름으로 검색...",
+            "badge": "마인크래프트 모드팩 · 맵 번역 허브",
+            "browseModpacks": "모드팩 번역 보기",
+            "browseMaps": "맵 번역 보기"
         },
         "sections": {
             "latest": "최신 번역",
             "popular": "인기 번역",
+            "latestModpacks": "최신 모드팩 번역",
+            "latestModpacksDesc": "최근 추가된 모드팩 번역",
+            "latestMaps": "최신 맵 번역",
+            "latestMapsDesc": "최근 추가된 맵 번역",
+            "popularModpacks": "인기 모드팩 번역",
+            "popularModpacksDesc": "가장 많이 다운로드된 모드팩 번역",
+            "popularMaps": "인기 맵 번역",
+            "popularMapsDesc": "가장 많이 다운로드된 맵 번역",
             "viewAll": "전체 보기"
         }
     },
@@ -53,6 +64,14 @@
             "author": "제작자",
             "version": "버전",
             "downloads": "다운로드 수"
+        },
+        "downloadPopup": {
+            "title": "리뷰 요청",
+            "message": "다운로드가 완료되었습니다. 번역이 정상적으로 작동하는지 확인 후 평가를 남겨주시겠습니까? 다른 사용자에게 큰 도움이 됩니다!",
+            "action": "평가하러 가기",
+            "dismiss": "나중에 하기",
+            "guide": "번역 적용 방법 보기",
+            "guideNotice": "적용 방법은 추후 작성될 예정입니다."
         }
     },
     "modpacks": {

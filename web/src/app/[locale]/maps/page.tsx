@@ -9,8 +9,24 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-    title: "맵 목록",
-    description: "번역된 마인크래프트 맵 목록입니다.",
+    title: "마인크래프트 맵 한글패치 & 번역 다운로드",
+    description:
+        "번역된 마인크래프트 맵을 찾아보세요. 인기 맵의 한글패치와 번역을 무료로 다운로드할 수 있습니다.",
+    keywords: [
+        "마인크래프트 맵 번역",
+        "마인크래프트 맵 한글패치",
+        "Minecraft map translation",
+        "Minecraft map Korean",
+        "맵 한글화",
+        "맵 번역 다운로드",
+    ],
+    alternates: {
+        canonical: "https://mcat.2odk.com/maps",
+        languages: {
+            "ko": "https://mcat.2odk.com/maps",
+            "en": "https://mcat.2odk.com/en/maps",
+        },
+    },
 };
 
 interface MapsPageProps {

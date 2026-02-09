@@ -18,8 +18,11 @@ import {
     Loader2,
     Save,
     X,
+    Check,
     CheckCircle,
     AlertCircle,
+    Star,
+    MessageSquare,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
@@ -41,12 +44,26 @@ export interface MapTranslation {
         name: string;
         avatar: string | null;
     } | null;
+    _count: {
+        reviews: number;
+    };
+}
+
+export interface MapReviewStats {
+    avgRating: number;
+}
+
+export interface MapWorksStats {
+    works: number;
+    notWorks: number;
 }
 
 interface MapTranslationListProps {
     initialTranslations: MapTranslation[];
     mapId: number;
     mapOriginalLink?: string | null;
+    reviewStats: Record<string, MapReviewStats>;
+    worksStats: Record<string, MapWorksStats>;
     isAdmin?: boolean;
 }
 
@@ -54,6 +71,8 @@ export default function MapTranslationList({
     initialTranslations,
     mapId,
     mapOriginalLink,
+    reviewStats,
+    worksStats,
     isAdmin = false,
 }: MapTranslationListProps) {
     const t = useTranslations();
@@ -262,6 +281,28 @@ export default function MapTranslationList({
                                             <Download className="w-4 h-4" />
                                             {trans.downloadCount.toLocaleString()}
                                         </span>
+                                        {reviewStats[trans.id] && (
+                                            <span className="flex items-center gap-1">
+                                                <Star className="w-4 h-4 text-yellow-500" />
+                                                {reviewStats[trans.id].avgRating.toFixed(1)}
+                                            </span>
+                                        )}
+                                        {worksStats[trans.id] && (
+                                            <>
+                                                <span className="flex items-center gap-1 text-[var(--status-success)]">
+                                                    <Check className="w-4 h-4" />
+                                                    {worksStats[trans.id].works} {t("review.works.yes")}
+                                                </span>
+                                                <span className="flex items-center gap-1 text-[var(--status-error)]">
+                                                    <X className="w-4 h-4" />
+                                                    {worksStats[trans.id].notWorks} {t("review.works.no")}
+                                                </span>
+                                            </>
+                                        )}
+                                        <span className="flex items-center gap-1">
+                                            <MessageSquare className="w-4 h-4" />
+                                            {trans._count.reviews} {t("review.title")}
+                                        </span>
                                         <span className="flex items-center gap-1">
                                             <Calendar className="w-4 h-4" />
                                             {new Date(trans.createdAt).toLocaleDateString()}
@@ -289,12 +330,22 @@ export default function MapTranslationList({
                                             )}
                                             <MapTranslationDownloadActions
                                                 translationId={trans.id}
+                                                mapId={mapId}
                                                 resourcePackUrl={trans.resourcePackUrl}
                                                 overrideFileUrl={trans.overrideFileUrl}
                                             />
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="mt-4 pt-4 border-t border-[var(--border-secondary)]">
+                                <Link
+                                    href={`/maps/${mapId}/review/${trans.id}`}
+                                    className="text-sm text-[var(--accent-primary)] hover:text-[var(--accent-hover)] transition-colors"
+                                >
+                                    {t("review.writeReview")} →
+                                </Link>
                             </div>
                         </div>
                     ))}

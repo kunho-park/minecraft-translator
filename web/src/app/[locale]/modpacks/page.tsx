@@ -10,9 +10,26 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "모드팩 목록",
+  title: "마인크래프트 모드팩 한글패치 & 번역 다운로드",
   description:
-    "번역된 마인크래프트 모드팩 목록입니다. 원하는 모드팩의 한글패치를 검색하고 다운로드하세요.",
+    "번역된 마인크래프트 모드팩 목록입니다. ATM, FTB, Create 등 인기 모드팩의 한글패치, 퀘스트 번역을 무료로 검색하고 다운로드하세요.",
+  keywords: [
+    "마인크래프트 모드팩 번역",
+    "마인크래프트 모드팩 한글패치",
+    "Minecraft modpack translation",
+    "Minecraft modpack Korean",
+    "모드팩 한글화",
+    "퀘스트 번역 다운로드",
+    "ATM 한글패치",
+    "FTB 한글패치",
+  ],
+  alternates: {
+    canonical: "https://mcat.2odk.com/modpacks",
+    languages: {
+      "ko": "https://mcat.2odk.com/modpacks",
+      "en": "https://mcat.2odk.com/en/modpacks",
+    },
+  },
 };
 
 interface ModpacksPageProps {

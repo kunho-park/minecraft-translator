@@ -15,6 +15,7 @@ model User {
   isAdmin          Boolean           @default(false)
   createdAt        DateTime          @default(now())
   reviews          Review[]
+  mapReviews       MapReview[]
   translationPacks TranslationPack[]
   mapTranslations  MapTranslation[]
 }
@@ -102,23 +103,41 @@ model Map {
 }
 
 model MapTranslation {
-  id               String   @id @default(uuid())
+  id               String      @id @default(uuid())
   mapId            Int
-  map              Map      @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  map              Map         @relation(fields: [mapId], references: [id], onDelete: Cascade)
   version          String
   userId           String?
-  user             User?    @relation(fields: [userId], references: [id])
-  sourceLang       String   @default("en_us")
-  targetLang       String   @default("ko_kr")
-  status           String   @default("pending")
+  user             User?       @relation(fields: [userId], references: [id])
+  sourceLang       String      @default("en_us")
+  targetLang       String      @default("ko_kr")
+  status           String      @default("pending")
   resourcePackUrl  String?
   overrideFileUrl  String?
   originalLink     String?
   minecraftVersion String?
-  downloadCount    Int      @default(0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  downloadCount    Int         @default(0)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  reviews          MapReview[]
 
   @@index([mapId])
   @@index([status])
+}
+
+model MapReview {
+  id              String         @id @default(uuid())
+  mapTranslationId String
+  userId          String?
+  works           Boolean
+  rating          Int
+  comment         String?
+  ipAddress       String?
+  isAnonymous     Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  user            User?          @relation(fields: [userId], references: [id])
+  mapTranslation  MapTranslation @relation(fields: [mapTranslationId], references: [id], onDelete: Cascade)
+
+  @@index([mapTranslationId])
+  @@index([ipAddress])
 }

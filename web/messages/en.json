@@ -37,11 +37,22 @@
         "hero": {
             "title": "Minecraft Translation Center",
             "subtitle": "Discover translations for modpacks, maps, and more",
-            "searchPlaceholder": "Search by modpack or map name..."
+            "searchPlaceholder": "Search by modpack or map name...",
+            "badge": "Minecraft Modpack & Map Translation Hub",
+            "browseModpacks": "Browse Modpacks",
+            "browseMaps": "Browse Maps"
         },
         "sections": {
             "latest": "Latest Translations",
             "popular": "Popular Translations",
+            "latestModpacks": "Latest Modpack Translations",
+            "latestModpacksDesc": "Recently added modpack translations",
+            "latestMaps": "Latest Map Translations",
+            "latestMapsDesc": "Recently added map translations",
+            "popularModpacks": "Popular Modpack Translations",
+            "popularModpacksDesc": "Most downloaded modpack translations",
+            "popularMaps": "Popular Map Translations",
+            "popularMapsDesc": "Most downloaded map translations",
             "viewAll": "View All"
         }
     },
@@ -53,6 +64,14 @@
             "author": "Author",
             "version": "Version",
             "downloads": "Downloads"
+        },
+        "downloadPopup": {
+            "title": "Review Request",
+            "message": "Download complete. Would you like to leave a review after checking if it works properly?",
+            "action": "Go to Review",
+            "dismiss": "Later",
+            "guide": "How to Apply Translation",
+            "guideNotice": "Application guide will be available soon."
         }
     },
     "modpacks": {
