@@ -87,11 +87,6 @@ web/scripts/.*
 
 web/prisma/*.db
 web/prisma/*.db-journal
-web/prisma/migrations/*
-!/web/prisma/migrations/.gitkeep
-
-web/prisma/migrations/*/migration.sql
-web/prisma/migrations/*/migration.sql.lock
 
 # Docker
 .dockerignore
