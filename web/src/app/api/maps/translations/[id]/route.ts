@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { unlink } from "fs/promises";
-import path from "path";
-
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+import { deleteFile } from "@/lib/storage";
 
 // PATCH - 맵 번역 수정 (관리자 전용)
 export async function PATCH(
@@ -82,17 +79,16 @@ export async function DELETE(
             );
         }
 
-        // Delete local files if they exist
         if (mapTranslation.resourcePackUrl && !mapTranslation.resourcePackUrl.startsWith("http")) {
             try {
-                await unlink(path.join(UPLOADS_DIR, mapTranslation.resourcePackUrl));
+                await deleteFile(mapTranslation.resourcePackUrl);
             } catch (e) {
                 console.error("Failed to delete map resource pack:", e);
             }
         }
         if (mapTranslation.overrideFileUrl && !mapTranslation.overrideFileUrl.startsWith("http")) {
             try {
-                await unlink(path.join(UPLOADS_DIR, mapTranslation.overrideFileUrl));
+                await deleteFile(mapTranslation.overrideFileUrl);
             } catch (e) {
                 console.error("Failed to delete map override file:", e);
             }

@@ -3,8 +3,11 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
+const r2Hostname = process.env.R2_PUBLIC_URL
+  ? new URL(process.env.R2_PUBLIC_URL).hostname
+  : null;
+
 const nextConfig: NextConfig = {
-  output: "standalone",
   images: {
     remotePatterns: [
       {
@@ -19,6 +22,9 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "mcat.2odk.com",
       },
+      ...(r2Hostname
+        ? [{ protocol: "https" as const, hostname: r2Hostname }]
+        : []),
     ],
   },
 };

@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import fs from "fs/promises";
-import path from "path";
-
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+import { downloadFile } from "@/lib/storage";
 
 export async function GET(
     request: NextRequest,
@@ -24,7 +21,6 @@ export async function GET(
             );
         }
 
-        // Get map translation
         const translation = await prisma.mapTranslation.findUnique({
             where: { id: translationId },
             include: {
@@ -41,7 +37,6 @@ export async function GET(
             );
         }
 
-        // Only allow downloads for approved translations or if user is admin
         if (translation.status !== "approved" && !session?.user?.isAdmin) {
             return NextResponse.json(
                 { error: "Translation is not approved" },
@@ -49,15 +44,15 @@ export async function GET(
             );
         }
 
-        let fileRelativePath: string | null = null;
+        let r2Key: string | null = null;
         let fileName: string;
 
         if (type === "resourcepack" && translation.resourcePackUrl) {
-            fileRelativePath = translation.resourcePackUrl;
+            r2Key = translation.resourcePackUrl;
             const ext = translation.resourcePackUrl.split(".").pop() || "zip";
             fileName = `${translation.map.slug}_${translation.version}_resourcepack.${ext}`;
         } else if (type === "override" && translation.overrideFileUrl) {
-            fileRelativePath = translation.overrideFileUrl;
+            r2Key = translation.overrideFileUrl;
             const ext = translation.overrideFileUrl.split(".").pop() || "zip";
             fileName = `${translation.map.slug}_${translation.version}_override.${ext}`;
         } else {
@@ -67,53 +62,28 @@ export async function GET(
             );
         }
 
-        // If URL is external, increment download count and redirect to it
-        if (fileRelativePath.startsWith("http")) {
+        // External link - redirect
+        if (r2Key.startsWith("http")) {
             await prisma.mapTranslation.update({
                 where: { id: translationId },
-                data: {
-                    downloadCount: {
-                        increment: 1,
-                    },
-                },
+                data: { downloadCount: { increment: 1 } },
             });
-            return NextResponse.redirect(fileRelativePath);
+            return NextResponse.redirect(r2Key);
         }
 
-        // Build file path (relative paths are like "maps/uuid_resourcepack.zip")
-        const filePath = path.join(UPLOADS_DIR, fileRelativePath);
+        const fileBuffer = await downloadFile(r2Key);
 
-        // Check if file exists
-        try {
-            await fs.access(filePath);
-        } catch {
-            return NextResponse.json(
-                { error: "File not found" },
-                { status: 404 }
-            );
-        }
-
-        // Read file
-        const fileBuffer = await fs.readFile(filePath);
-
-        // Determine content type
-        const ext = filePath.split(".").pop()?.toLowerCase();
+        const ext = r2Key.split(".").pop()?.toLowerCase();
         let contentType = "application/octet-stream";
         if (ext === "zip") contentType = "application/zip";
         else if (ext === "jar") contentType = "application/java-archive";
 
-        // Update download count
         await prisma.mapTranslation.update({
             where: { id: translationId },
-            data: {
-                downloadCount: {
-                    increment: 1,
-                },
-            },
+            data: { downloadCount: { increment: 1 } },
         });
 
-        // Return file
-        return new NextResponse(fileBuffer, {
+        return new NextResponse(new Uint8Array(fileBuffer), {
             headers: {
                 "Content-Type": contentType,
                 "Content-Disposition": `attachment; filename="${fileName}"`,

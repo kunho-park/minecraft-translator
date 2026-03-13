@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import path from "path";
-
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
 
 export async function POST(
   request: NextRequest,

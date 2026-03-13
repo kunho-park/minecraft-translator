@@ -2,19 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import fs from "fs/promises";
-import path from "path";
+import { uploadFile } from "@/lib/storage";
 import { v4 as uuidv4 } from "uuid";
-
-const UPLOADS_DIR = path.join(process.cwd(), "uploads", "maps");
-
-async function ensureUploadsDir() {
-    try {
-        await fs.access(UPLOADS_DIR);
-    } catch {
-        await fs.mkdir(UPLOADS_DIR, { recursive: true });
-    }
-}
 
 export async function POST(request: NextRequest) {
     try {
@@ -40,7 +29,6 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        await ensureUploadsDir();
         const fileId = uuidv4();
 
         let resourcePackUrl: string | null = null;
@@ -50,22 +38,20 @@ export async function POST(request: NextRequest) {
             resourcePackUrl = resourcePackLink;
         } else if (resourcePack) {
             const ext = resourcePack.name.split(".").pop() || "zip";
-            const fileName = `${fileId}_resourcepack.${ext}`;
-            const filePath = path.join(UPLOADS_DIR, fileName);
+            const key = `maps/${fileId}_resourcepack.${ext}`;
             const buffer = Buffer.from(await resourcePack.arrayBuffer());
-            await fs.writeFile(filePath, buffer);
-            resourcePackUrl = `maps/${fileName}`;
+            await uploadFile(key, buffer, "application/zip");
+            resourcePackUrl = key;
         }
 
         if (overrideFileLink) {
             overrideFileUrl = overrideFileLink;
         } else if (overrideFile) {
             const ext = overrideFile.name.split(".").pop() || "zip";
-            const fileName = `${fileId}_override.${ext}`;
-            const filePath = path.join(UPLOADS_DIR, fileName);
+            const key = `maps/${fileId}_override.${ext}`;
             const buffer = Buffer.from(await overrideFile.arrayBuffer());
-            await fs.writeFile(filePath, buffer);
-            overrideFileUrl = `maps/${fileName}`;
+            await uploadFile(key, buffer, "application/zip");
+            overrideFileUrl = key;
         }
 
         const translation = await prisma.mapTranslation.create({

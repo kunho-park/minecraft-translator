@@ -62,9 +62,9 @@ export default async function MapsPage({
         ...(query
             ? {
                 OR: [
-                    { name: { contains: query } },
-                    { summary: { contains: query } },
-                    { author: { contains: query } },
+                    { name: { contains: query, mode: "insensitive" as const } },
+                    { summary: { contains: query, mode: "insensitive" as const } },
+                    { author: { contains: query, mode: "insensitive" as const } },
                 ],
             }
             : {}),

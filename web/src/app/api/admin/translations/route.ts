@@ -18,8 +18,8 @@ export async function GET(request: Request) {
     const whereModpack = q
       ? {
         OR: [
-          { modpack: { name: { contains: q } } },
-          { user: { name: { contains: q } } },
+          { modpack: { name: { contains: q, mode: "insensitive" as const } } },
+          { user: { name: { contains: q, mode: "insensitive" as const } } },
           { user: { discordId: { contains: q } } },
         ],
       }
@@ -28,8 +28,8 @@ export async function GET(request: Request) {
     const whereMap = q
       ? {
         OR: [
-          { map: { name: { contains: q } } },
-          { user: { name: { contains: q } } },
+          { map: { name: { contains: q, mode: "insensitive" as const } } },
+          { user: { name: { contains: q, mode: "insensitive" as const } } },
           { user: { discordId: { contains: q } } },
         ],
       }

@@ -4,20 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notifySubmission } from "@/lib/discord";
 import { getCurseForgeClient } from "@/lib/curseforge";
+import { uploadFile } from "@/lib/storage";
 import { v4 as uuidv4 } from "uuid";
-import fs from "fs/promises";
-import path from "path";
-
-// Ensure uploads directory exists
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
-
-async function ensureUploadsDir() {
-  try {
-    await fs.access(UPLOADS_DIR);
-  } catch {
-    await fs.mkdir(UPLOADS_DIR, { recursive: true });
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -106,13 +94,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Ensure uploads directory exists
-    await ensureUploadsDir();
-
-    // Save files
     const packId = uuidv4();
-    const packDir = path.join(UPLOADS_DIR, packId);
-    await fs.mkdir(packDir, { recursive: true });
 
     let resourcePackPath: string | null = null;
     let overrideFilePath: string | null = null;
@@ -120,21 +102,19 @@ export async function POST(request: NextRequest) {
     if (resourcePackLink) {
       resourcePackPath = resourcePackLink;
     } else if (resourcePack) {
-      const rpFileName = `${packId}_resourcepack.zip`;
-      const rpPath = path.join(packDir, rpFileName);
+      const key = `translations/${packId}/${packId}_resourcepack.zip`;
       const rpBuffer = Buffer.from(await resourcePack.arrayBuffer());
-      await fs.writeFile(rpPath, rpBuffer);
-      resourcePackPath = `${packId}/${rpFileName}`;
+      await uploadFile(key, rpBuffer, "application/zip");
+      resourcePackPath = key;
     }
 
     if (overrideFileLink) {
       overrideFilePath = overrideFileLink;
     } else if (overrideFile) {
-      const ofFileName = `${packId}_override.zip`;
-      const ofPath = path.join(packDir, ofFileName);
+      const key = `translations/${packId}/${packId}_override.zip`;
       const ofBuffer = Buffer.from(await overrideFile.arrayBuffer());
-      await fs.writeFile(ofPath, ofBuffer);
-      overrideFilePath = `${packId}/${ofFileName}`;
+      await uploadFile(key, ofBuffer, "application/zip");
+      overrideFilePath = key;
     }
 
     // Create translation pack (flattened schema - no versions)

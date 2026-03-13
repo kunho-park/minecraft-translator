@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import fs from "fs/promises";
-import path from "path";
-
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+import { downloadFile } from "@/lib/storage";
 
 export async function GET(
     request: NextRequest,
@@ -24,7 +21,6 @@ export async function GET(
             );
         }
 
-        // Get translation pack (flattened schema - no versions)
         const translationPack = await prisma.translationPack.findUnique({
             where: { id: packId },
             include: {
@@ -41,7 +37,6 @@ export async function GET(
             );
         }
 
-        // Only allow downloads for approved translations or if user is admin
         if (translationPack.status !== "approved" && !session?.user?.isAdmin) {
             return NextResponse.json(
                 { error: "Translation is not approved" },
@@ -49,14 +44,14 @@ export async function GET(
             );
         }
 
-        let filePath: string | null = null;
+        let r2Key: string | null = null;
         let fileName: string;
 
         if (type === "resourcepack" && translationPack.resourcePackPath) {
-            filePath = path.join(UPLOADS_DIR, translationPack.resourcePackPath);
+            r2Key = translationPack.resourcePackPath;
             fileName = `${translationPack.modpack.slug}_${translationPack.modpackVersion}_resourcepack.zip`;
         } else if (type === "override" && translationPack.overrideFilePath) {
-            filePath = path.join(UPLOADS_DIR, translationPack.overrideFilePath);
+            r2Key = translationPack.overrideFilePath;
             fileName = `${translationPack.modpack.slug}_${translationPack.modpackVersion}_override.zip`;
         } else {
             return NextResponse.json(
@@ -65,31 +60,23 @@ export async function GET(
             );
         }
 
-        // Check if file exists
-        try {
-            await fs.access(filePath);
-        } catch {
-            return NextResponse.json(
-                { error: "File not found" },
-                { status: 404 }
-            );
+        // External link - redirect
+        if (r2Key.startsWith("http")) {
+            await prisma.translationPack.update({
+                where: { id: packId },
+                data: { downloadCount: { increment: 1 } },
+            });
+            return NextResponse.redirect(r2Key);
         }
 
-        // Read file
-        const fileBuffer = await fs.readFile(filePath);
+        const fileBuffer = await downloadFile(r2Key);
 
-        // Update download count (flattened schema - downloadCount is on TranslationPack)
         await prisma.translationPack.update({
             where: { id: packId },
-            data: {
-                downloadCount: {
-                    increment: 1,
-                },
-            },
+            data: { downloadCount: { increment: 1 } },
         });
 
-        // Return file
-        return new NextResponse(fileBuffer, {
+        return new NextResponse(new Uint8Array(fileBuffer), {
             headers: {
                 "Content-Type": "application/zip",
                 "Content-Disposition": `attachment; filename="${fileName}"`,

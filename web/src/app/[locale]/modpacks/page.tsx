@@ -67,16 +67,16 @@ export default async function ModpacksPage({
     ...(query
       ? {
         OR: [
-          { name: { contains: query } },
-          { summary: { contains: query } },
-          { author: { contains: query } },
+          { name: { contains: query, mode: "insensitive" as const } },
+          { summary: { contains: query, mode: "insensitive" as const } },
+          { author: { contains: query, mode: "insensitive" as const } },
         ],
       }
       : {}),
     ...(tagsFilter.length > 0
       ? {
         AND: tagsFilter.map((tag) => ({
-          categories: { contains: tag },
+          categories: { contains: tag, mode: "insensitive" as const },
         })),
       }
       : {}),

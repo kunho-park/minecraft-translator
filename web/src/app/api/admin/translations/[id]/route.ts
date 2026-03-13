@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { unlink } from "fs/promises";
-import path from "path";
-
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+import { deleteFile } from "@/lib/storage";
 
 // DELETE - 번역 삭제 (관리자 전용)
 export async function DELETE(
@@ -34,17 +31,16 @@ export async function DELETE(
         );
       }
 
-      // Delete files
-      if (mapTranslation.resourcePackUrl) {
+      if (mapTranslation.resourcePackUrl && !mapTranslation.resourcePackUrl.startsWith("http")) {
         try {
-          await unlink(path.join(UPLOADS_DIR, mapTranslation.resourcePackUrl));
+          await deleteFile(mapTranslation.resourcePackUrl);
         } catch (e) {
           console.error("Failed to delete map resource pack:", e);
         }
       }
-      if (mapTranslation.overrideFileUrl) {
+      if (mapTranslation.overrideFileUrl && !mapTranslation.overrideFileUrl.startsWith("http")) {
         try {
-          await unlink(path.join(UPLOADS_DIR, mapTranslation.overrideFileUrl));
+          await deleteFile(mapTranslation.overrideFileUrl);
         } catch (e) {
           console.error("Failed to delete map override file:", e);
         }
@@ -71,16 +67,16 @@ export async function DELETE(
         );
       }
 
-      if (pack.resourcePackPath) {
+      if (pack.resourcePackPath && !pack.resourcePackPath.startsWith("http")) {
         try {
-          await unlink(path.join(UPLOADS_DIR, pack.resourcePackPath));
+          await deleteFile(pack.resourcePackPath);
         } catch (e) {
           console.error("Failed to delete resource pack:", e);
         }
       }
-      if (pack.overrideFilePath) {
+      if (pack.overrideFilePath && !pack.overrideFilePath.startsWith("http")) {
         try {
-          await unlink(path.join(UPLOADS_DIR, pack.overrideFilePath));
+          await deleteFile(pack.overrideFilePath);
         } catch (e) {
           console.error("Failed to delete override file:", e);
         }

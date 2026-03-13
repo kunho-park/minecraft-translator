@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "src/app/api/translations/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/maps/translations/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

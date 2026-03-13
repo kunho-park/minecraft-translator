@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { unlink } from "fs/promises";
-import path from "path";
-
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+import { deleteFile } from "@/lib/storage";
 
 // PATCH - 모드팩 번역 수정 (관리자 전용)
 export async function PATCH(
@@ -91,17 +88,16 @@ export async function DELETE(
             );
         }
 
-        // Delete local files
         if (pack.resourcePackPath && !pack.resourcePackPath.startsWith("http")) {
             try {
-                await unlink(path.join(UPLOADS_DIR, pack.resourcePackPath));
+                await deleteFile(pack.resourcePackPath);
             } catch (e) {
                 console.error("Failed to delete resource pack:", e);
             }
         }
         if (pack.overrideFilePath && !pack.overrideFilePath.startsWith("http")) {
             try {
-                await unlink(path.join(UPLOADS_DIR, pack.overrideFilePath));
+                await deleteFile(pack.overrideFilePath);
             } catch (e) {
                 console.error("Failed to delete override file:", e);
             }

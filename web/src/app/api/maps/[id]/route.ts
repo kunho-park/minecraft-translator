@@ -2,19 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import fs from "fs/promises";
-import path from "path";
+import { uploadFile, getPublicUrl } from "@/lib/storage";
 import { v4 as uuidv4 } from "uuid";
-
-const THUMBNAILS_DIR = path.join(process.cwd(), "public", "uploads", "thumbnails");
-
-async function ensureThumbnailsDir() {
-    try {
-        await fs.access(THUMBNAILS_DIR);
-    } catch {
-        await fs.mkdir(THUMBNAILS_DIR, { recursive: true });
-    }
-}
 
 export async function PATCH(
     request: NextRequest,
@@ -39,13 +28,11 @@ export async function PATCH(
         let thumbnailUrl: string | undefined;
 
         if (thumbnail) {
-            await ensureThumbnailsDir();
             const ext = thumbnail.name.split(".").pop() || "png";
-            const fileName = `${uuidv4()}.${ext}`;
-            const filePath = path.join(THUMBNAILS_DIR, fileName);
+            const key = `thumbnails/${uuidv4()}.${ext}`;
             const buffer = Buffer.from(await thumbnail.arrayBuffer());
-            await fs.writeFile(filePath, buffer);
-            thumbnailUrl = `/uploads/thumbnails/${fileName}`;
+            await uploadFile(key, buffer, thumbnail.type || "image/png");
+            thumbnailUrl = getPublicUrl(key);
         }
 
         const updatedMap = await prisma.map.update({
