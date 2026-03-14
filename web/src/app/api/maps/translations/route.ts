@@ -19,10 +19,12 @@ export async function POST(request: NextRequest) {
         const overrideFile = formData.get("overrideFile") as File | null;
         const resourcePackLink = formData.get("resourcePackLink") as string | null;
         const overrideFileLink = formData.get("overrideFileLink") as string | null;
+        const resourcePackKey = formData.get("resourcePackKey") as string | null;
+        const overrideFileKey = formData.get("overrideFileKey") as string | null;
         const originalLink = formData.get("originalLink") as string | null;
         const minecraftVersion = formData.get("minecraftVersion") as string | null;
 
-        if (!mapId || !version || (!resourcePack && !overrideFile && !resourcePackLink && !overrideFileLink)) {
+        if (!mapId || !version || (!resourcePack && !overrideFile && !resourcePackLink && !overrideFileLink && !resourcePackKey && !overrideFileKey)) {
             return NextResponse.json(
                 { error: "Missing required fields" },
                 { status: 400 }
@@ -34,7 +36,9 @@ export async function POST(request: NextRequest) {
         let resourcePackUrl: string | null = null;
         let overrideFileUrl: string | null = null;
 
-        if (resourcePackLink) {
+        if (resourcePackKey) {
+            resourcePackUrl = resourcePackKey;
+        } else if (resourcePackLink) {
             resourcePackUrl = resourcePackLink;
         } else if (resourcePack) {
             const ext = resourcePack.name.split(".").pop() || "zip";
@@ -44,7 +48,9 @@ export async function POST(request: NextRequest) {
             resourcePackUrl = key;
         }
 
-        if (overrideFileLink) {
+        if (overrideFileKey) {
+            overrideFileUrl = overrideFileKey;
+        } else if (overrideFileLink) {
             overrideFileUrl = overrideFileLink;
         } else if (overrideFile) {
             const ext = overrideFile.name.split(".").pop() || "zip";

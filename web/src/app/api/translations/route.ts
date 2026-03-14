@@ -32,6 +32,8 @@ export async function POST(request: NextRequest) {
     const overrideFile = formData.get("overrideFile") as File | null;
     const resourcePackLink = formData.get("resourcePackLink") as string | null;
     const overrideFileLink = formData.get("overrideFileLink") as string | null;
+    const resourcePackKey = formData.get("resourcePackKey") as string | null;
+    const overrideFileKey = formData.get("overrideFileKey") as string | null;
 
     // 번역 통계 필드
     const fileCount = formData.get("fileCount") as string | null;
@@ -51,7 +53,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!resourcePack && !overrideFile && !resourcePackLink && !overrideFileLink) {
+    if (!resourcePack && !overrideFile && !resourcePackLink && !overrideFileLink && !resourcePackKey && !overrideFileKey) {
       return NextResponse.json(
         { error: "At least one file or link is required" },
         { status: 400 }
@@ -99,7 +101,9 @@ export async function POST(request: NextRequest) {
     let resourcePackPath: string | null = null;
     let overrideFilePath: string | null = null;
 
-    if (resourcePackLink) {
+    if (resourcePackKey) {
+      resourcePackPath = resourcePackKey;
+    } else if (resourcePackLink) {
       resourcePackPath = resourcePackLink;
     } else if (resourcePack) {
       const key = `translations/${packId}/${packId}_resourcepack.zip`;
@@ -108,7 +112,9 @@ export async function POST(request: NextRequest) {
       resourcePackPath = key;
     }
 
-    if (overrideFileLink) {
+    if (overrideFileKey) {
+      overrideFilePath = overrideFileKey;
+    } else if (overrideFileLink) {
       overrideFilePath = overrideFileLink;
     } else if (overrideFile) {
       const key = `translations/${packId}/${packId}_override.zip`;

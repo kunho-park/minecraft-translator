@@ -110,69 +110,97 @@ async def upload_to_website(
     config = translation_config or {}
     stats = translation_stats or {}
 
-    # FormData 준비
-    data = aiohttp.FormData()
-    data.add_field("curseforgeId", str(curseforge_id))
-    data.add_field("modpackVersion", modpack_version)
-    data.add_field("sourceLang", config.get("source_lang", "en_us"))
-    data.add_field("targetLang", config.get("target_lang", "ko_kr"))
-    data.add_field("anonymous", str(anonymous).lower())
-
-    if "llm_model" in config:
-        data.add_field("llmModel", config["llm_model"])
-    if "temperature" in config:
-        data.add_field("temperature", str(config["temperature"]))
-    if "batch_size" in config:
-        data.add_field("batchSize", str(config["batch_size"]))
-    data.add_field("usedGlossary", str(config.get("used_glossary", False)).lower())
-    data.add_field("reviewed", str(config.get("reviewed", False)).lower())
-
-    # 통계 데이터 추가
-    if "file_count" in stats:
-        data.add_field("fileCount", str(stats["file_count"]))
-    if "total_entries" in stats:
-        data.add_field("totalEntries", str(stats["total_entries"]))
-    if "translated_entries" in stats:
-        data.add_field("translatedEntries", str(stats["translated_entries"]))
-    if "input_tokens" in stats:
-        data.add_field("inputTokens", str(stats["input_tokens"]))
-    if "output_tokens" in stats:
-        data.add_field("outputTokens", str(stats["output_tokens"]))
-    if "total_tokens" in stats:
-        data.add_field("totalTokens", str(stats["total_tokens"]))
-    if "handler_stats" in stats:
-        import json
-
-        data.add_field("handlerStats", json.dumps(stats["handler_stats"]))
-    if "duration_seconds" in stats:
-        data.add_field("durationSeconds", str(stats["duration_seconds"]))
-
-    # 파일 추가
-    if resource_pack_path and resource_pack_path.exists():
-        with open(resource_pack_path, "rb") as f:
-            data.add_field(
-                "resourcePack",
-                f.read(),
-                filename=resource_pack_path.name,
-                content_type="application/zip",
-            )
-        logger.info(f"리소스팩 파일 추가: {resource_pack_path}")
-
-    if override_path and override_path.exists():
-        with open(override_path, "rb") as f:
-            data.add_field(
-                "overrideFile",
-                f.read(),
-                filename=override_path.name,
-                content_type="application/zip",
-            )
-        logger.info(f"덮어쓰기 파일 추가: {override_path}")
-
-    # 업로드 요청
-    url = f"{api_url}/translations"
-    logger.info(f"업로드 시작: {url}")
-
     async with aiohttp.ClientSession() as session:
+        # 1) Presigned URL 발급
+        files_req = []
+        if resource_pack_path and resource_pack_path.exists():
+            files_req.append({"type": "resourcepack"})
+        if override_path and override_path.exists():
+            files_req.append({"type": "override"})
+
+        uploaded_keys: dict[str, str] = {}
+
+        if files_req:
+            presign_url = f"{api_url}/upload-url"
+            async with session.post(
+                presign_url,
+                json={"files": files_req, "anonymous": anonymous},
+            ) as resp:
+                if resp.status != 200:
+                    error_msg = (await resp.json()).get("error", f"HTTP {resp.status}")
+                    return UploadResult(success=False, pack_id=None, message=error_msg)
+                presign_data = await resp.json()
+
+            # 2) Presigned URL로 파일 직접 업로드
+            for f_info in presign_data["files"]:
+                if f_info["type"] == "resourcepack" and resource_pack_path:
+                    file_bytes = resource_pack_path.read_bytes()
+                    logger.info(f"리소스팩 업로드 중: {resource_pack_path}")
+                elif f_info["type"] == "override" and override_path:
+                    file_bytes = override_path.read_bytes()
+                    logger.info(f"덮어쓰기 파일 업로드 중: {override_path}")
+                else:
+                    continue
+
+                async with session.put(
+                    f_info["uploadUrl"],
+                    data=file_bytes,
+                    headers={"Content-Type": "application/zip"},
+                ) as put_resp:
+                    if put_resp.status not in (200, 201):
+                        return UploadResult(
+                            success=False,
+                            pack_id=None,
+                            message=f"R2 upload failed: HTTP {put_resp.status}",
+                        )
+                uploaded_keys[f_info["type"]] = f_info["key"]
+
+        # 3) 메타데이터 전송
+        data = aiohttp.FormData()
+        data.add_field("curseforgeId", str(curseforge_id))
+        data.add_field("modpackVersion", modpack_version)
+        data.add_field("sourceLang", config.get("source_lang", "en_us"))
+        data.add_field("targetLang", config.get("target_lang", "ko_kr"))
+        data.add_field("anonymous", str(anonymous).lower())
+
+        if "llm_model" in config:
+            data.add_field("llmModel", config["llm_model"])
+        if "temperature" in config:
+            data.add_field("temperature", str(config["temperature"]))
+        if "batch_size" in config:
+            data.add_field("batchSize", str(config["batch_size"]))
+        data.add_field(
+            "usedGlossary", str(config.get("used_glossary", False)).lower()
+        )
+        data.add_field("reviewed", str(config.get("reviewed", False)).lower())
+
+        if "file_count" in stats:
+            data.add_field("fileCount", str(stats["file_count"]))
+        if "total_entries" in stats:
+            data.add_field("totalEntries", str(stats["total_entries"]))
+        if "translated_entries" in stats:
+            data.add_field("translatedEntries", str(stats["translated_entries"]))
+        if "input_tokens" in stats:
+            data.add_field("inputTokens", str(stats["input_tokens"]))
+        if "output_tokens" in stats:
+            data.add_field("outputTokens", str(stats["output_tokens"]))
+        if "total_tokens" in stats:
+            data.add_field("totalTokens", str(stats["total_tokens"]))
+        if "handler_stats" in stats:
+            import json
+
+            data.add_field("handlerStats", json.dumps(stats["handler_stats"]))
+        if "duration_seconds" in stats:
+            data.add_field("durationSeconds", str(stats["duration_seconds"]))
+
+        if "resourcepack" in uploaded_keys:
+            data.add_field("resourcePackKey", uploaded_keys["resourcepack"])
+        if "override" in uploaded_keys:
+            data.add_field("overrideFileKey", uploaded_keys["override"])
+
+        url = f"{api_url}/translations"
+        logger.info(f"메타데이터 전송: {url}")
+
         async with session.post(url, data=data) as response:
             result = await response.json()
 

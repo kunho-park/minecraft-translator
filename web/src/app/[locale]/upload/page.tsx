@@ -178,6 +178,15 @@ function UploadContent() {
         }
     };
 
+    const uploadViaPresignedUrl = async (file: File, uploadUrl: string) => {
+        const res = await fetch(uploadUrl, {
+            method: "PUT",
+            body: file,
+            headers: { "Content-Type": file.type || "application/zip" },
+        });
+        if (!res.ok) throw new Error("File upload failed");
+    };
+
     const handleModpackSubmit = async () => {
         const hasResourcePack = resourcePackType === "file" ? !!resourcePack : !!resourcePackLink;
         const hasOverrideFile = overrideFileType === "file" ? !!overrideFile : !!overrideFileLink;
@@ -191,6 +200,30 @@ function UploadContent() {
         setError(null);
 
         try {
+            const filesToUpload: { type: string; contentType?: string }[] = [];
+            if (resourcePackType === "file" && resourcePack)
+                filesToUpload.push({ type: "resourcepack" });
+            if (overrideFileType === "file" && overrideFile)
+                filesToUpload.push({ type: "override" });
+
+            let uploadedKeys: Record<string, string> = {};
+
+            if (filesToUpload.length > 0) {
+                const urlRes = await fetch("/api/upload-url", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ files: filesToUpload }),
+                });
+                if (!urlRes.ok) throw new Error("Failed to get upload URL");
+                const urlData = await urlRes.json();
+
+                for (const f of urlData.files) {
+                    const file = f.type === "resourcepack" ? resourcePack! : overrideFile!;
+                    await uploadViaPresignedUrl(file, f.uploadUrl);
+                    uploadedKeys[f.type] = f.key;
+                }
+            }
+
             const formData = new FormData();
             formData.append("curseforgeId", modpack.id.toString());
             formData.append("modpackVersion", modpackVersion);
@@ -205,14 +238,14 @@ function UploadContent() {
             }
             formData.append("reviewed", reviewed.toString());
 
-            if (resourcePackType === "file" && resourcePack) {
-                formData.append("resourcePack", resourcePack);
+            if (uploadedKeys["resourcepack"]) {
+                formData.append("resourcePackKey", uploadedKeys["resourcepack"]);
             } else if (resourcePackType === "link" && resourcePackLink) {
                 formData.append("resourcePackLink", resourcePackLink);
             }
 
-            if (overrideFileType === "file" && overrideFile) {
-                formData.append("overrideFile", overrideFile);
+            if (uploadedKeys["override"]) {
+                formData.append("overrideFileKey", uploadedKeys["override"]);
             } else if (overrideFileType === "link" && overrideFileLink) {
                 formData.append("overrideFileLink", overrideFileLink);
             }
@@ -283,21 +316,45 @@ function UploadContent() {
                 mapId = newMap.id;
             }
 
-            // Upload Translation
+            // Upload files via presigned URL
+            const mapFilesToUpload: { type: string; contentType?: string }[] = [];
+            if (mapResourcePackType === "file" && mapResourcePack)
+                mapFilesToUpload.push({ type: "map-resourcepack" });
+            if (mapOverrideFileType === "file" && mapOverrideFile)
+                mapFilesToUpload.push({ type: "map-override" });
+
+            let mapUploadedKeys: Record<string, string> = {};
+
+            if (mapFilesToUpload.length > 0) {
+                const urlRes = await fetch("/api/upload-url", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ files: mapFilesToUpload }),
+                });
+                if (!urlRes.ok) throw new Error("Failed to get upload URL");
+                const urlData = await urlRes.json();
+
+                for (const f of urlData.files) {
+                    const file = f.type === "map-resourcepack" ? mapResourcePack! : mapOverrideFile!;
+                    await uploadViaPresignedUrl(file, f.uploadUrl);
+                    mapUploadedKeys[f.type] = f.key;
+                }
+            }
+
             const formData = new FormData();
             formData.append("mapId", mapId!.toString());
             formData.append("version", mapVersion);
             if (mapOriginalLink) formData.append("originalLink", mapOriginalLink);
             if (mapMinecraftVersion) formData.append("minecraftVersion", mapMinecraftVersion);
 
-            if (mapResourcePackType === "file" && mapResourcePack) {
-                formData.append("resourcePack", mapResourcePack);
+            if (mapUploadedKeys["map-resourcepack"]) {
+                formData.append("resourcePackKey", mapUploadedKeys["map-resourcepack"]);
             } else if (mapResourcePackType === "link" && mapResourcePackLink) {
                 formData.append("resourcePackLink", mapResourcePackLink);
             }
 
-            if (mapOverrideFileType === "file" && mapOverrideFile) {
-                formData.append("overrideFile", mapOverrideFile);
+            if (mapUploadedKeys["map-override"]) {
+                formData.append("overrideFileKey", mapUploadedKeys["map-override"]);
             } else if (mapOverrideFileType === "link" && mapOverrideFileLink) {
                 formData.append("overrideFileLink", mapOverrideFileLink);
             }

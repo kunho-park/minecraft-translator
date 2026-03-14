@@ -4,6 +4,7 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const s3 = new S3Client({
   region: "auto",
@@ -51,4 +52,20 @@ export function getPublicUrl(key: string): string {
     throw new Error("R2_PUBLIC_URL is not configured");
   }
   return `${publicUrl}/${key}`;
+}
+
+export async function getPresignedUploadUrl(
+  key: string,
+  contentType: string,
+  expiresIn = 600
+): Promise<string> {
+  return getSignedUrl(
+    s3,
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      ContentType: contentType,
+    }),
+    { expiresIn }
+  );
 }
