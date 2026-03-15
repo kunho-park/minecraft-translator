@@ -399,6 +399,7 @@ class MainWindow(QMainWindow):
         self.progress_view.stopRequested.connect(self.translation_worker.cancel)
 
         # Move to progress view
+        self.progress_view.reset_eta()
         self.go_to_step(4)
         self.translation_worker.start()
 
@@ -564,6 +565,7 @@ class MainWindow(QMainWindow):
         self.translation_worker.translationError.connect(self._on_translation_error)
 
         # Move to progress view and start
+        self.progress_view.reset_eta()
         self.go_to_step(4)
         self.translation_worker.start()
 

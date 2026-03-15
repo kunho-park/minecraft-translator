@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_SINGLE_WORD_RE = re.compile(r"\w+$")
+
 
 class GlossaryFilter:
     """Filter glossary to only relevant terms for given texts."""
@@ -31,21 +33,19 @@ class GlossaryFilter:
         if not glossary:
             return Glossary()
 
-        # Combine all texts for searching (keep both original case and lowercase)
         combined_text_original = " ".join(texts.values())
         combined_text = combined_text_original.lower()
 
-        # Filter term rules
+        word_set = set(re.findall(r"\w+", combined_text))
+
         filtered_terms = GlossaryFilter._filter_term_rules(
-            glossary.term_rules, combined_text
+            glossary.term_rules, combined_text, word_set
         )
 
-        # Filter proper noun rules (now checks aliases too)
         filtered_nouns = GlossaryFilter._filter_proper_noun_rules(
-            glossary.proper_noun_rules, combined_text
+            glossary.proper_noun_rules, combined_text, word_set
         )
 
-        # Filter formatting rules based on keywords (global rules always included)
         filtered_rules = GlossaryFilter._filter_formatting_rules(
             glossary.formatting_rules, combined_text_original
         )
@@ -70,54 +70,93 @@ class GlossaryFilter:
 
     @staticmethod
     def _filter_term_rules(
-        term_rules: list[TermRule], combined_text: str
+        term_rules: list[TermRule],
+        combined_text: str,
+        word_set: set[str],
     ) -> list[TermRule]:
-        """Filter term rules to only those whose aliases appear in text.
+        """Filter term rules using word-set lookup + single combined regex.
 
-        Args:
-            term_rules: All term rules
-            combined_text: Combined text to search in (lowercase)
-
-        Returns:
-            Filtered term rules
+        Single-word aliases are checked via O(1) set membership.
+        Multi-word aliases that pass a cheap substring pre-filter are
+        verified in a single compiled regex scan.
         """
-        filtered = []
+        if not term_rules:
+            return []
 
-        for term in term_rules:
+        matched_indices: set[int] = set()
+        multi_word_map: dict[str, list[int]] = {}
+
+        for i, term in enumerate(term_rules):
             if not term.aliases:
                 continue
-            alternatives = "|".join(re.escape(a.lower()) for a in term.aliases)
-            pattern = re.compile(r"\b(?:" + alternatives + r")\b")
-            if pattern.search(combined_text):
-                filtered.append(term)
 
-        return filtered
+            for alias in term.aliases:
+                lowered = alias.lower()
+
+                if _SINGLE_WORD_RE.fullmatch(lowered):
+                    if lowered in word_set:
+                        matched_indices.add(i)
+                        break
+                else:
+                    if lowered in combined_text:
+                        multi_word_map.setdefault(lowered, []).append(i)
+
+        if multi_word_map:
+            sorted_aliases = sorted(multi_word_map, key=len, reverse=True)
+            pattern = re.compile(
+                r"\b(?:" + "|".join(re.escape(a) for a in sorted_aliases) + r")\b"
+            )
+            for m in pattern.finditer(combined_text):
+                hit = m.group()
+                if hit in multi_word_map:
+                    matched_indices.update(multi_word_map[hit])
+
+        return [term_rules[i] for i in sorted(matched_indices)]
 
     @staticmethod
     def _filter_proper_noun_rules(
-        proper_noun_rules: list[ProperNounRule], combined_text: str
+        proper_noun_rules: list[ProperNounRule],
+        combined_text: str,
+        word_set: set[str],
     ) -> list[ProperNounRule]:
-        """Filter proper noun rules to only those that appear in text.
+        """Filter proper noun rules using word-set lookup + single combined regex.
 
-        Checks both source_like and aliases for matches.
-
-        Args:
-            proper_noun_rules: All proper noun rules
-            combined_text: Combined text to search in (lowercase)
-
-        Returns:
-            Filtered proper noun rules
+        Checks both source_like and aliases.
         """
-        filtered = []
+        if not proper_noun_rules:
+            return []
 
-        for noun in proper_noun_rules:
-            candidates = [noun.source_like, *noun.aliases]
-            alternatives = "|".join(re.escape(c.lower()) for c in candidates)
-            pattern = re.compile(r"\b(?:" + alternatives + r")\b")
-            if pattern.search(combined_text):
-                filtered.append(noun)
+        matched_indices: set[int] = set()
+        multi_word_map: dict[str, list[int]] = {}
 
-        return filtered
+        for i, noun in enumerate(proper_noun_rules):
+            candidates = [noun.source_like.lower()] + [a.lower() for a in noun.aliases]
+
+            found = False
+            for c in candidates:
+                if _SINGLE_WORD_RE.fullmatch(c):
+                    if c in word_set:
+                        matched_indices.add(i)
+                        found = True
+                        break
+                else:
+                    if c in combined_text:
+                        multi_word_map.setdefault(c, []).append(i)
+
+            if found:
+                continue
+
+        if multi_word_map:
+            sorted_aliases = sorted(multi_word_map, key=len, reverse=True)
+            pattern = re.compile(
+                r"\b(?:" + "|".join(re.escape(a) for a in sorted_aliases) + r")\b"
+            )
+            for m in pattern.finditer(combined_text):
+                hit = m.group()
+                if hit in multi_word_map:
+                    matched_indices.update(multi_word_map[hit])
+
+        return [proper_noun_rules[i] for i in sorted(matched_indices)]
 
     @staticmethod
     def _filter_formatting_rules(
@@ -127,28 +166,19 @@ class GlossaryFilter:
 
         Global rules (is_global=True or empty keywords) are always included.
         Other rules are included only if at least one keyword matches the text.
-
-        Args:
-            formatting_rules: All formatting rules
-            combined_text: Combined text to search in (original case preserved)
-
-        Returns:
-            Filtered formatting rules
         """
+        if not formatting_rules:
+            return []
+
         filtered = []
         combined_lower = combined_text.lower()
 
         for rule in formatting_rules:
-            # Global rules or rules without keywords are always included
             if rule.is_global or not rule.keywords:
                 filtered.append(rule)
                 continue
 
-            # Check if any keyword appears in the text (case-insensitive)
-            for keyword in rule.keywords:
-                keyword_lower = keyword.lower()
-                if keyword_lower in combined_lower:
-                    filtered.append(rule)
-                    break
+            if any(kw.lower() in combined_lower for kw in rule.keywords):
+                filtered.append(rule)
 
         return filtered

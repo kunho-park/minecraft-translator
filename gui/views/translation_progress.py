@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt, Signal
@@ -37,6 +38,9 @@ class TranslationProgressView(QWidget):
         """
         super().__init__()
         self.main_window = main_window
+        self._phase_start_time: float = 0.0
+        self._phase_total: int = -1
+        self._phase_start_current: int = 0
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -88,6 +92,12 @@ class TranslationProgressView(QWidget):
         self.count_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.count_label.setStyleSheet("color: #888888;")
         progress_card_layout.addWidget(self.count_label)
+
+        # ETA label
+        self.eta_label = BodyLabel("")
+        self.eta_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.eta_label.setStyleSheet("color: #1890FF; font-size: 13px;")
+        progress_card_layout.addWidget(self.eta_label)
 
         layout.addWidget(progress_card)
 
@@ -222,6 +232,9 @@ class TranslationProgressView(QWidget):
         # Update status
         self.status_label.setText(message)
 
+        # ETA calculation — reset timer when phase changes (total changes)
+        self._update_eta(current, total)
+
         # Update stats
         if stats:
             if "total" in stats:
@@ -278,6 +291,59 @@ class TranslationProgressView(QWidget):
             self.log_text.verticalScrollBar().maximum()
         )
 
+    def _update_eta(self, current: int, total: int) -> None:
+        """Calculate and display ETA based on current phase progress."""
+        if total <= 0:
+            self.eta_label.setText("")
+            return
+
+        now = time.monotonic()
+
+        # Detect phase change when total changes
+        if total != self._phase_total:
+            self._phase_total = total
+            self._phase_start_time = now
+            self._phase_start_current = current
+            self.eta_label.setText("⏱ 남은 시간 계산 중...")
+            return
+
+        done_in_phase = current - self._phase_start_current
+        elapsed = now - self._phase_start_time
+
+        if done_in_phase <= 0 or elapsed < 3.0:
+            self.eta_label.setText("⏱ 남은 시간 계산 중...")
+            return
+
+        if current >= total:
+            self.eta_label.setText("")
+            return
+
+        rate = done_in_phase / elapsed
+        remaining_items = total - current
+        eta_seconds = remaining_items / rate
+        self.eta_label.setText(f"⏱ 남은 시간: {self._format_eta(eta_seconds)}")
+
+    @staticmethod
+    def _format_eta(seconds: float) -> str:
+        """Format seconds into human-readable duration."""
+        seconds = max(0, int(seconds))
+        if seconds < 60:
+            return f"{seconds}초"
+        minutes = seconds // 60
+        secs = seconds % 60
+        if minutes < 60:
+            return f"{minutes}분 {secs}초" if secs else f"{minutes}분"
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours}시간 {mins}분" if mins else f"{hours}시간"
+
+    def reset_eta(self) -> None:
+        """Reset ETA tracking state for a new run."""
+        self._phase_start_time = 0.0
+        self._phase_total = -1
+        self._phase_start_current = 0
+        self.eta_label.setText("")
+
     def complete(self) -> None:
         """Mark translation as complete."""
         from ..i18n import get_translator
@@ -287,6 +353,7 @@ class TranslationProgressView(QWidget):
         self.progress_bar.setValue(100)
         self.status_label.setText(t.t("completion.description"))
         self.stop_button.setText(t.t("common.next"))
+        self.eta_label.setText("")
 
         InfoBar.success(
             t.t("completion.title"),
