@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notifySubmission } from "@/lib/discord";
 import { getCurseForgeClient } from "@/lib/curseforge";
@@ -12,8 +11,8 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const anonymous = formData.get("anonymous") === "true";
 
-    const session = await getServerSession(authOptions);
-    if (!session?.user && !anonymous) {
+    const authUser = await getAuthFromRequest(request);
+    if (!authUser && !anonymous) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -129,7 +128,7 @@ export async function POST(request: NextRequest) {
         id: packId,
         modpackId: modpack.id,
         modpackVersion,
-        userId: session?.user?.id || null, // Allow null for anonymous
+        userId: authUser?.id ?? null,
         sourceLang,
         targetLang,
         status: "pending",
@@ -159,7 +158,7 @@ export async function POST(request: NextRequest) {
       modpackId: modpack.id,
       modpackName: modpack.name,
       modpackVersion: translationPack.modpackVersion,
-      uploaderName: session?.user?.name || "Anonymous",
+      uploaderName: authUser?.name ?? "Anonymous",
       sourceLang: translationPack.sourceLang,
       targetLang: translationPack.targetLang,
       isManualTranslation: translationPack.isManualTranslation,

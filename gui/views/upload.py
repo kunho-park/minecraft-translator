@@ -32,21 +32,15 @@ class UploadView(QWidget):
     uploadRequested = Signal(
         int, str, bool, str
     )  # curseforge_id, version, anonymous, api_url
-    skipRequested = Signal()  # Skip upload
+    skipRequested = Signal()
 
     def __init__(self, main_window: MainWindow) -> None:
-        """Initialize upload view.
-
-        Args:
-            main_window: Main application window
-        """
         super().__init__()
         self.main_window = main_window
-        self.api_url = "https://mcat.2odk.com/api"  # Fixed API URL
+        self.api_url = "https://mcat.2odk.com/api"
         self._init_ui()
 
     def _init_ui(self) -> None:
-        """Initialize UI components."""
         from ..i18n import get_translator
 
         t = get_translator()
@@ -121,9 +115,33 @@ class UploadView(QWidget):
         version_layout.addWidget(self.modpack_version)
         settings_card_layout.addLayout(version_layout)
 
-        self.anonymous_enabled = True
-
         layout.addWidget(settings_card)
+
+        # Account Card
+        account_card = CardWidget()
+        account_card_layout = QVBoxLayout(account_card)
+        account_card_layout.setSpacing(12)
+        account_card_layout.setContentsMargins(25, 25, 25, 25)
+
+        account_title = StrongBodyLabel("계정")
+        account_card_layout.addWidget(account_title)
+
+        self.account_status_label = BodyLabel(
+            "로그인하면 업로드가 계정에 연결됩니다."
+        )
+        self.account_status_label.setStyleSheet("color: #888888;")
+        account_card_layout.addWidget(self.account_status_label)
+
+        account_btn_layout = QHBoxLayout()
+        self.login_button = PushButton("Discord 로그인")
+        self.logout_button = PushButton("로그아웃")
+        self.logout_button.setVisible(False)
+        account_btn_layout.addWidget(self.login_button)
+        account_btn_layout.addWidget(self.logout_button)
+        account_btn_layout.addStretch()
+        account_card_layout.addLayout(account_btn_layout)
+
+        layout.addWidget(account_card)
 
         # Progress bar (hidden initially)
         self.progress_bar = ProgressBar()
@@ -153,16 +171,34 @@ class UploadView(QWidget):
         self.upload_button.clicked.connect(self._on_upload_clicked)
 
     def showEvent(self, event: object) -> None:
-        """Handle show event to auto-fill modpack info."""
         super().showEvent(event)
         self._load_modpack_info()
+        self._refresh_account_ui()
+
+    def _refresh_account_ui(self) -> None:
+        """Update the account card to reflect current login state."""
+        from ..config import get_config
+
+        config = get_config()
+
+        if config.get("auth.token"):
+            user_name = config.get("auth.user_name", "사용자")
+            self.account_status_label.setText(f"{user_name}님으로 로그인됨")
+            self.account_status_label.setStyleSheet("color: #4ade80;")
+            self.login_button.setVisible(False)
+            self.logout_button.setVisible(True)
+        else:
+            self.account_status_label.setText(
+                "로그인하면 업로드가 계정에 연결됩니다."
+            )
+            self.account_status_label.setStyleSheet("color: #888888;")
+            self.login_button.setVisible(True)
+            self.logout_button.setVisible(False)
 
     def _load_modpack_info(self) -> None:
-        """Load modpack info from state and auto-fill form."""
         modpack_info = self.main_window.state.get("modpack_info")
 
         if modpack_info:
-            # Update info labels
             self.info_name_label.setText(f"모드팩: {modpack_info.name}")
             self.info_version_label.setText(
                 f"버전: {modpack_info.version or '알 수 없음'}"
@@ -173,14 +209,14 @@ class UploadView(QWidget):
                     f"CurseForge ID: {modpack_info.curseforge_id}"
                 )
                 self.curseforge_id.setText(str(modpack_info.curseforge_id))
-                self.curseforge_id.setEnabled(False)  # Auto-detected, disable editing
+                self.curseforge_id.setEnabled(False)
             else:
                 self.info_id_label.setText("CurseForge ID: 감지 안됨")
                 self.curseforge_id.setEnabled(True)
 
             if modpack_info.version:
                 self.modpack_version.setText(modpack_info.version)
-                self.modpack_version.setEnabled(False)  # Auto-detected, disable editing
+                self.modpack_version.setEnabled(False)
             else:
                 self.modpack_version.setEnabled(True)
 
@@ -191,7 +227,6 @@ class UploadView(QWidget):
                 modpack_info.version,
             )
         else:
-            # No modpack info, enable manual input
             self.info_name_label.setText("모드팩: 알 수 없음")
             self.info_version_label.setText("버전: 알 수 없음")
             self.info_id_label.setText("CurseForge ID: 알 수 없음")
@@ -207,26 +242,27 @@ class UploadView(QWidget):
             )
 
     def _on_upload_clicked(self) -> None:
-        """Handle upload button click."""
         try:
             curseforge_id = int(self.curseforge_id.text())
             version = self.modpack_version.text()
-            anonymous = self.anonymous_enabled
+
+            from ..config import get_config
+
+            config = get_config()
+            anonymous = not bool(config.get("auth.token"))
 
             if not version:
                 self.status_label.setText("모드팩 버전을 입력해주세요.")
                 self.status_label.setVisible(True)
                 return
 
-            # Disable buttons
             self.upload_button.setEnabled(False)
             self.skip_button.setEnabled(False)
             self.progress_bar.setVisible(True)
-            self.progress_bar.setRange(0, 0)  # Indeterminate
+            self.progress_bar.setRange(0, 0)
             self.status_label.setText("업로드 중...")
             self.status_label.setVisible(True)
 
-            # Emit signal with fixed API URL
             self.uploadRequested.emit(curseforge_id, version, anonymous, self.api_url)
 
         except ValueError:
@@ -234,19 +270,9 @@ class UploadView(QWidget):
             self.status_label.setVisible(True)
 
     def update_status(self, message: str) -> None:
-        """Update upload status.
-
-        Args:
-            message: Status message
-        """
         self.status_label.setText(message)
 
     def reset_after_error(self, error_message: str) -> None:
-        """Reset UI state after upload failure so the user can retry or skip.
-
-        Args:
-            error_message: Error message to display
-        """
         self.upload_button.setEnabled(True)
         self.skip_button.setEnabled(True)
         self.progress_bar.setVisible(False)

@@ -57,6 +57,7 @@ async def upload_to_website(
     translation_stats: TranslationStats | None = None,
     api_url: str = "https://mcat.2odk.com/api",
     anonymous: bool = True,
+    auth_token: str | None = None,
 ) -> UploadResult:
     """
     번역 결과를 웹사이트에 업로드합니다.
@@ -110,7 +111,11 @@ async def upload_to_website(
     config = translation_config or {}
     stats = translation_stats or {}
 
-    async with aiohttp.ClientSession() as session:
+    headers: dict[str, str] = {}
+    if auth_token:
+        headers["Authorization"] = f"Bearer {auth_token}"
+
+    async with aiohttp.ClientSession(headers=headers) as session:
         # 1) Presigned URL 발급
         files_req = []
         if resource_pack_path and resource_pack_path.exists():

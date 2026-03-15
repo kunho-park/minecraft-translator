@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthFromRequest } from "@/lib/auth";
 import { getPresignedUploadUrl } from "@/lib/storage";
 import { v4 as uuidv4 } from "uuid";
 
@@ -12,8 +11,8 @@ export async function POST(request: NextRequest) {
       anonymous?: boolean;
     };
 
-    const session = await getServerSession(authOptions);
-    if (!session?.user && !anonymous) {
+    const authUser = await getAuthFromRequest(request);
+    if (!authUser && !anonymous) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

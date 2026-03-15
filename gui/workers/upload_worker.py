@@ -43,19 +43,8 @@ class UploadWorker(QThread):
         api_url: str,
         anonymous: bool,
         translation_stats: TranslationStatsDict | None = None,
+        auth_token: str | None = None,
     ) -> None:
-        """Initialize upload worker.
-        
-        Args:
-            curseforge_id: CurseForge modpack ID
-            modpack_version: Modpack version string
-            resource_pack_path: Path to resource pack ZIP
-            override_path: Path to override ZIP
-            config: Translation config
-            api_url: API endpoint URL
-            anonymous: Whether to upload anonymously
-            translation_stats: Translation statistics from pipeline
-        """
         super().__init__()
         self.curseforge_id = curseforge_id
         self.modpack_version = modpack_version
@@ -65,6 +54,7 @@ class UploadWorker(QThread):
         self.api_url = api_url
         self.anonymous = anonymous
         self.translation_stats = translation_stats
+        self.auth_token = auth_token
     
     def run(self) -> None:
         """Run the upload operation."""
@@ -120,6 +110,7 @@ class UploadWorker(QThread):
                         translation_stats=translation_stats,
                         api_url=self.api_url,
                         anonymous=self.anonymous,
+                        auth_token=self.auth_token,
                     )
                 )
                 

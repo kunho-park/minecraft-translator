@@ -1,5 +1,7 @@
 import { AuthOptions } from "next-auth";
+import { NextRequest } from "next/server";
 import DiscordProvider from "next-auth/providers/discord";
+import { getServerSession } from "next-auth";
 import { prisma } from "./prisma";
 
 // Admin Discord IDs from environment variable
@@ -70,3 +72,53 @@ export const authOptions: AuthOptions = {
     strategy: "jwt",
   },
 };
+
+export interface AuthUser {
+  id: string;
+  discordId: string;
+  name: string;
+  isAdmin: boolean;
+}
+
+/**
+ * Resolve the authenticated user from either a NextAuth session cookie
+ * or an `Authorization: Bearer <token>` header (API token from desktop app).
+ */
+export async function getAuthFromRequest(
+  request: NextRequest
+): Promise<AuthUser | null> {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.id) {
+    return {
+      id: session.user.id,
+      discordId: session.user.discordId,
+      name: session.user.name ?? "Unknown",
+      isAdmin: session.user.isAdmin ?? false,
+    };
+  }
+
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    const apiToken = await prisma.apiToken.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+    if (apiToken) {
+      prisma.apiToken
+        .update({
+          where: { id: apiToken.id },
+          data: { lastUsedAt: new Date() },
+        })
+        .catch(() => {});
+      return {
+        id: apiToken.user.id,
+        discordId: apiToken.user.discordId,
+        name: apiToken.user.name,
+        isAdmin: apiToken.user.isAdmin,
+      };
+    }
+  }
+
+  return null;
+}

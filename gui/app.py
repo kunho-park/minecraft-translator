@@ -44,7 +44,28 @@ class MainWindow(QMainWindow):
         }
 
         self._init_window()
+        self._init_auth()
         self._load_views()
+
+    def _init_auth(self) -> None:
+        """Initialize the desktop auth manager."""
+        from .auth import DesktopAuth
+
+        self.desktop_auth = DesktopAuth(self.config)
+        self.desktop_auth.loginComplete.connect(self._on_login_complete)
+        self.desktop_auth.loginFailed.connect(self._on_login_failed)
+
+    def _on_login_complete(
+        self, token: str, user_name: str, discord_id: str
+    ) -> None:
+        """Handle successful login."""
+        logger.info("Login complete: %s", user_name)
+        if hasattr(self, "upload_view"):
+            self.upload_view._refresh_account_ui()
+
+    def _on_login_failed(self, error: str) -> None:
+        """Handle login failure."""
+        logger.error("Login failed: %s", error)
 
     def _init_window(self) -> None:
         """Initialize window properties."""
@@ -253,6 +274,10 @@ class MainWindow(QMainWindow):
         self.upload_view.skipRequested.connect(
             lambda: self.go_to_step(7)
         )  # Skip to completion
+        self.upload_view.login_button.clicked.connect(
+            self.desktop_auth.start_login
+        )
+        self.upload_view.logout_button.clicked.connect(self._on_logout_clicked)
 
     def _on_modpack_selected(self, modpack_path: Path) -> None:
         """Handle modpack selection - start scanning.
@@ -607,6 +632,8 @@ class MainWindow(QMainWindow):
             "duration_seconds": result.duration_seconds,
         }
 
+        auth_token = self.config.get("auth.token") or None
+
         self.upload_worker = UploadWorker(
             curseforge_id=curseforge_id,
             modpack_version=version,
@@ -616,6 +643,7 @@ class MainWindow(QMainWindow):
             api_url=api_url,
             anonymous=anonymous,
             translation_stats=translation_stats,
+            auth_token=auth_token,
         )
         self.upload_worker.uploadProgress.connect(self.upload_view.update_status)
         self.upload_worker.uploadComplete.connect(self._on_upload_complete)
@@ -642,6 +670,11 @@ class MainWindow(QMainWindow):
         """
         logger.error("Upload error: %s", error)
         self.upload_view.reset_after_error(error)
+
+    def _on_logout_clicked(self) -> None:
+        """Handle logout button click."""
+        self.desktop_auth.logout()
+        self.upload_view._refresh_account_ui()
 
     def go_to_step(self, step: int) -> None:
         """Navigate to a specific step.

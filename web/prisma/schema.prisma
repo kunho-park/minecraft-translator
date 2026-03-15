@@ -19,6 +19,19 @@ model User {
   mapReviews       MapReview[]
   translationPacks TranslationPack[]
   mapTranslations  MapTranslation[]
+  apiTokens        ApiToken[]
+}
+
+model ApiToken {
+  id         String    @id @default(uuid())
+  token      String    @unique
+  userId     String
+  name       String    @default("Desktop App")
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
 }
 
 model Modpack {

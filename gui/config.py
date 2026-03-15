@@ -60,6 +60,11 @@ class AppConfig(QObject):
                 "anonymous": True,
                 "last_curseforge_id": "",
             },
+            "auth": {
+                "token": "",
+                "user_name": "",
+                "discord_id": "",
+            },
         }
 
     def load(self) -> None:
