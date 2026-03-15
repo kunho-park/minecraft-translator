@@ -76,6 +76,7 @@ class ResourcePackGenerator:
             config: Resource pack configuration.
         """
         self.config = config or ResourcePackConfig()
+        self.registry = create_default_registry()
         logger.info("Initialized ResourcePackGenerator")
 
     async def generate(
@@ -114,18 +115,59 @@ class ResourcePackGenerator:
         # Generate pack.mcmeta
         await self._write_pack_mcmeta(pack_dir)
 
-        # Generate language files
-        files_count = 0
+        # Separate patchouli tasks from lang tasks
+        lang_tasks: list[TranslationTask] = []
+        patchouli_tasks: list[TranslationTask] = []
 
         for task in tasks:
-            if task.entries:
-                try:
-                    await self._write_language_file(task, assets_dir)
-                    files_count += 1
-                except Exception as e:
-                    error_msg = f"Failed to write {task.file_pair.namespace}: {e}"
-                    logger.error(error_msg)
-                    result.errors.append(error_msg)
+            if not task.entries:
+                continue
+            source_str = str(task.file_pair.source_path).lower().replace("\\", "/")
+            if "patchouli_books/" in source_str:
+                patchouli_tasks.append(task)
+            else:
+                lang_tasks.append(task)
+
+        # Generate language files (merge entries for same namespace)
+        files_count = 0
+        merged_lang_data: dict[str, dict[str, str]] = {}
+
+        for task in lang_tasks:
+            try:
+                namespace = task.file_pair.namespace or "minecraft"
+                if namespace not in merged_lang_data:
+                    merged_lang_data[namespace] = {}
+                merged_lang_data[namespace].update(task.to_output_dict())
+            except Exception as e:
+                error_msg = f"Failed to process {task.file_pair.namespace}: {e}"
+                logger.error(error_msg)
+                result.errors.append(error_msg)
+
+        for namespace, output_data in merged_lang_data.items():
+            try:
+                lang_dir = assets_dir / namespace / "lang"
+                lang_dir.mkdir(parents=True, exist_ok=True)
+                lang_file = lang_dir / f"{self.config.target_locale}.json"
+                async with aiofiles.open(lang_file, "w", encoding="utf-8") as f:
+                    await f.write(
+                        json.dumps(output_data, ensure_ascii=False, indent=2)
+                    )
+                files_count += 1
+                logger.debug("Wrote language file: %s", lang_file)
+            except Exception as e:
+                error_msg = f"Failed to write lang file for {namespace}: {e}"
+                logger.error(error_msg)
+                result.errors.append(error_msg)
+
+        # Generate patchouli book files (preserve directory structure)
+        for task in patchouli_tasks:
+            try:
+                await self._write_patchouli_file(task, assets_dir)
+                files_count += 1
+            except Exception as e:
+                error_msg = f"Failed to write patchouli file {task.file_pair.source_path}: {e}"
+                logger.error(error_msg)
+                result.errors.append(error_msg)
 
         result.files_generated = files_count
 
@@ -187,6 +229,50 @@ class ResourcePackGenerator:
             await f.write(json.dumps(output_data, ensure_ascii=False, indent=2))
 
         logger.debug("Wrote language file: %s", lang_file)
+
+    async def _write_patchouli_file(
+        self,
+        task: TranslationTask,
+        assets_dir: Path,
+    ) -> None:
+        """Write a patchouli book file preserving directory structure.
+
+        Instead of merging into lang files, patchouli book files are written
+        to their proper patchouli_books path within the resource pack.
+        """
+        source_path = task.file_pair.source_path
+        source_str = str(source_path).replace("\\", "/")
+
+        # Extract relative path from 'assets/' onwards
+        assets_marker = "/assets/"
+        idx = source_str.lower().find(assets_marker)
+        if idx >= 0:
+            rel_from_assets = source_str[idx + len(assets_marker) :]
+        else:
+            logger.warning(
+                "Cannot determine patchouli output path (no 'assets/' in path): %s",
+                source_path,
+            )
+            return
+
+        # Replace source locale with target locale in path
+        rel_from_assets = rel_from_assets.replace("en_us", self.config.target_locale)
+        output_path = assets_dir / rel_from_assets
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Use handler to apply translations (preserves nested JSON structure)
+        handler = self.registry.get_handler(source_path)
+        if handler:
+            output_data = task.to_output_dict()
+            await handler.apply(source_path, output_data, output_path)
+            logger.debug("Wrote patchouli file: %s", output_path)
+        else:
+            output_data = task.to_output_dict()
+            async with aiofiles.open(output_path, "w", encoding="utf-8") as f:
+                await f.write(
+                    json.dumps(output_data, ensure_ascii=False, indent=2)
+                )
+            logger.debug("Wrote patchouli file (fallback): %s", output_path)
 
 
 class OverrideGenerator:
@@ -266,6 +352,7 @@ class OverrideGenerator:
             "config/",
             "scripts/",
             "/ftbquests/",
+            "patchouli_books/",
         ]
 
         return any(pattern in path_str for pattern in override_patterns)
@@ -363,21 +450,26 @@ async def generate_outputs(
     override_gen = OverrideGenerator()
 
     for task in tasks:
+        source_str = str(task.file_pair.source_path).lower().replace("\\", "/")
+        is_extracted = ".mct_cache" in source_str or "extracted" in source_str
+        is_patchouli = "patchouli_books/" in source_str
+
         # Check for Jar Mod tasks first
         if _should_be_jar_mod(task):
             jar_mod_tasks.append(task)
         elif override_gen._should_be_override(task.file_pair.source_path):
-            # Skip extracted files for overrides to prevent temporary paths in output
-            # (Extracted files are inside JARs, so they can't be overrides unless extracted to system path, which is rare)
-            if ".mct_cache" in str(task.file_pair.source_path) or "extracted" in str(
-                task.file_pair.source_path
-            ):
-                logger.debug(
-                    "Skipping extracted override candidate: %s",
-                    task.file_pair.source_path,
-                )
-                continue
-            override_tasks.append(task)
+            if is_extracted:
+                # Extracted patchouli files go to resource pack (not skipped)
+                if is_patchouli:
+                    resource_pack_tasks.append(task)
+                else:
+                    logger.debug(
+                        "Skipping extracted override candidate: %s",
+                        task.file_pair.source_path,
+                    )
+                    continue
+            else:
+                override_tasks.append(task)
         else:
             resource_pack_tasks.append(task)
 

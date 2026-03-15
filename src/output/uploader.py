@@ -111,11 +111,11 @@ async def upload_to_website(
     config = translation_config or {}
     stats = translation_stats or {}
 
-    headers: dict[str, str] = {}
+    auth_headers: dict[str, str] = {}
     if auth_token:
-        headers["Authorization"] = f"Bearer {auth_token}"
+        auth_headers["Authorization"] = f"Bearer {auth_token}"
 
-    async with aiohttp.ClientSession(headers=headers) as session:
+    async with aiohttp.ClientSession() as session:
         # 1) Presigned URL 발급
         files_req = []
         if resource_pack_path and resource_pack_path.exists():
@@ -130,6 +130,7 @@ async def upload_to_website(
             async with session.post(
                 presign_url,
                 json={"files": files_req, "anonymous": anonymous},
+                headers=auth_headers,
             ) as resp:
                 if resp.status != 200:
                     error_msg = (await resp.json()).get("error", f"HTTP {resp.status}")
@@ -206,7 +207,7 @@ async def upload_to_website(
         url = f"{api_url}/translations"
         logger.info(f"메타데이터 전송: {url}")
 
-        async with session.post(url, data=data) as response:
+        async with session.post(url, data=data, headers=auth_headers) as response:
             result = await response.json()
 
             if response.status == 200:

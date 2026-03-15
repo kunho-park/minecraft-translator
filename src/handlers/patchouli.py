@@ -47,6 +47,9 @@ class PatchouliHandler(ContentHandler):
     # Language code pattern (e.g., en_us, ko_kr)
     _LANG_PATTERN = re.compile(r"^[a-z]{2}_[a-z]{2}$")
 
+    # Translation key reference pattern (e.g., "patchouli.confluence.otherworld_note.world.name")
+    _TRANSLATION_KEY_PATTERN = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$")
+
     def can_handle(self, path: Path) -> bool:
         """Check if this is a Patchouli file (en_us or no lang folder)."""
         if not super().can_handle(path):
@@ -77,6 +80,14 @@ class PatchouliHandler(ContentHandler):
         last_part = parts[-1].split("[")[0]
         return last_part in self.TRANSLATABLE_KEYS
 
+    def _is_translation_key_reference(self, value: str) -> bool:
+        """Check if a value is a translation key reference rather than actual text.
+
+        Translation key references like "patchouli.mod.book.entry.name" should not
+        be translated as they point to lang file entries resolved by the game.
+        """
+        return bool(self._TRANSLATION_KEY_PATTERN.match(value))
+
     async def extract(self, path: Path) -> Mapping[str, str]:
         """Extract translatable strings from Patchouli file."""
         parser = BaseParser.create_parser(path)
@@ -98,7 +109,12 @@ class PatchouliHandler(ContentHandler):
             for i, page in enumerate(data["pages"]):
                 if isinstance(page, dict):
                     for key, value in page.items():
-                        if key in self.TRANSLATABLE_KEYS and isinstance(value, str) and value.strip():
+                        if (
+                            key in self.TRANSLATABLE_KEYS
+                            and isinstance(value, str)
+                            and value.strip()
+                            and not self._is_translation_key_reference(value)
+                        ):
                             entries[f"pages[{i}].{key}"] = value
 
         # Extract other fields
@@ -121,7 +137,11 @@ class PatchouliHandler(ContentHandler):
             full_key = f"{prefix}.{key}" if prefix else key
 
             if isinstance(value, str):
-                if self._should_translate_key(full_key) and value.strip():
+                if (
+                    self._should_translate_key(full_key)
+                    and value.strip()
+                    and not self._is_translation_key_reference(value)
+                ):
                     entries[full_key] = value
 
             elif isinstance(value, dict):
@@ -132,7 +152,11 @@ class PatchouliHandler(ContentHandler):
                     item_key = f"{full_key}[{i}]"
                     if isinstance(item, dict):
                         self._extract_from_dict(item, entries, item_key)
-                    elif isinstance(item, str) and self._should_translate_key(full_key):
+                    elif (
+                        isinstance(item, str)
+                        and self._should_translate_key(full_key)
+                        and not self._is_translation_key_reference(item)
+                    ):
                         entries[item_key] = item
 
     async def apply(
