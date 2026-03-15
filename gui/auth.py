@@ -140,11 +140,12 @@ class DesktopAuth(QObject):
 
     def _wait_for_callback(self) -> None:
         """Block until the callback is received or timeout."""
-        if not self._server:
+        server = self._server
+        if not server:
             return
 
         try:
-            self._server.handle_request()
+            server.handle_request()
 
             result = _CallbackHandler.auth_result
             if result:
@@ -162,7 +163,10 @@ class DesktopAuth(QObject):
             logger.exception("Login callback error: %s", e)
             self.loginFailed.emit(str(e))
         finally:
-            self._server.server_close()
+            try:
+                server.server_close()
+            except Exception:
+                pass
             self._server = None
 
     def logout(self) -> None:
