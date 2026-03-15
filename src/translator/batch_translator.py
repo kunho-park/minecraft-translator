@@ -161,8 +161,7 @@ class BatchTranslator:
                 finally:
                     queue.task_done()
 
-        # Start workers (use LLM client's max_concurrent)
-        num_workers = self.llm_client.config.max_concurrent
+        num_workers = min(self.llm_client.config.max_concurrent, len(batches))
         workers = [asyncio.create_task(worker()) for _ in range(num_workers)]
 
         # Wait for all batches to be processed

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import re
 import time
 from collections import deque
 from enum import Enum
@@ -626,6 +628,69 @@ class LLMClient:
         tasks = [self.chat(prompt, system_prompt) for prompt in prompts]
         return await asyncio.gather(*tasks)
 
+    async def _structured_output_via_prompt(
+        self,
+        messages: list[SystemMessage | HumanMessage],
+        output_schema: type[T],
+    ) -> T:
+        """Structured output via prompt-based JSON extraction.
+
+        Used for models that don't support function calling or response_format
+        (e.g., deepseek-reasoner).
+        """
+        schema_json = json.dumps(output_schema.model_json_schema(), indent=2)
+        json_instruction = (
+            "\n\nRespond with ONLY a valid JSON object matching this schema:\n"
+            f"{schema_json}\n"
+            "Output ONLY the JSON object, no other text or markdown."
+        )
+
+        augmented_messages = list(messages)
+        if augmented_messages and isinstance(augmented_messages[-1], HumanMessage):
+            last_msg = augmented_messages[-1]
+            augmented_messages[-1] = HumanMessage(
+                content=str(last_msg.content) + json_instruction
+            )
+        else:
+            augmented_messages.append(HumanMessage(content=json_instruction))
+
+        response = await self.llm.ainvoke(
+            augmented_messages, config={"callbacks": [self.token_callback]}
+        )
+
+        content = (
+            response.content
+            if isinstance(response.content, str)
+            else str(response.content)
+        )
+
+        for extractor in [
+            lambda c: c.strip(),
+            lambda c: m.group(1)
+            if (m := re.search(r"```(?:json)?\s*(.*?)\s*```", c, re.DOTALL))
+            else None,
+            lambda c: m.group(0)
+            if (m := re.search(r"\{.*\}", c, re.DOTALL))
+            else None,
+        ]:
+            try:
+                extracted = extractor(content)
+                if extracted is not None:
+                    data = json.loads(extracted)
+                    return output_schema.model_validate(data)
+            except (json.JSONDecodeError, Exception):
+                continue
+
+        raise ValueError(
+            f"Failed to parse structured output from response: {content[:500]}"
+        )
+
+    def _is_deepseek_reasoner(self) -> bool:
+        return (
+            self.config.provider == LLMProvider.DEEPSEEK
+            and "reasoner" in self.config.model.lower()
+        )
+
     async def structured_output(
         self,
         prompt: str,
@@ -660,7 +725,19 @@ class LLMClient:
                 "Sending structured output request (schema: %s)",
                 output_schema.__name__,
             )
-            structured_llm = self.llm.with_structured_output(output_schema)
+
+            if self._is_deepseek_reasoner():
+                return await self._structured_output_via_prompt(
+                    messages, output_schema
+                )
+
+            so_kwargs: dict[str, Any] = {}
+            if self.config.provider == LLMProvider.DEEPSEEK:
+                so_kwargs["method"] = "function_calling"
+
+            structured_llm = self.llm.with_structured_output(
+                output_schema, **so_kwargs
+            )
             response = await structured_llm.ainvoke(
                 messages, config={"callbacks": [self.token_callback]}
             )

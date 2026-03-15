@@ -14,6 +14,8 @@ from ..models import (
 )
 from ..translator.placeholder import PlaceholderProtector
 
+from ..models.glossary import ProperNounRule, TermRule
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
@@ -24,6 +26,12 @@ logger = logging.getLogger(__name__)
 # Maximum acceptable length ratio (translated / source)
 MAX_LENGTH_RATIO = 3.0
 MIN_LENGTH_RATIO = 0.2
+
+_UNRESTORED_TOKEN_RE = re.compile(r"⟦PH[^⟧]*⟧")
+_JAVA_FORMAT_RE = re.compile(r"%(?:\d+\$)?[sdifxXobeEgGaAcChHnp]")
+_NUMBERED_FORMAT_RE = re.compile(r"%(\d+)\$[sdifxXobeEgGaAcChHnp]")
+_SECTION_COLOR_RE = re.compile(r"§[0-9a-fk-or]", re.IGNORECASE)
+_AMPERSAND_COLOR_RE = re.compile(r"&[0-9a-fk-or]", re.IGNORECASE)
 
 
 class TranslationValidator:
@@ -46,7 +54,33 @@ class TranslationValidator:
         """
         self.protector = PlaceholderProtector()
         self.glossary = glossary
+        self._compiled_term_patterns: list[
+            tuple[TermRule, list[tuple[str, re.Pattern[str]]]]
+        ] = []
+        self._compiled_noun_patterns: list[
+            tuple[ProperNounRule, list[tuple[str, re.Pattern[str]]]]
+        ] = []
+        if glossary:
+            self._precompile_glossary_patterns(glossary)
         logger.info("Initialized TranslationValidator")
+
+    def _precompile_glossary_patterns(self, glossary: Glossary) -> None:
+        for term in glossary.term_rules:
+            alias_patterns = [
+                (a, re.compile(r"\b" + re.escape(a.lower()) + r"\b"))
+                for a in term.aliases
+            ]
+            self._compiled_term_patterns.append((term, alias_patterns))
+
+        for noun in glossary.proper_noun_rules:
+            candidates = [(noun.source_like, re.compile(
+                r"\b" + re.escape(noun.source_like.lower()) + r"\b"
+            ))]
+            candidates.extend(
+                (a, re.compile(r"\b" + re.escape(a.lower()) + r"\b"))
+                for a in noun.aliases
+            )
+            self._compiled_noun_patterns.append((noun, candidates))
 
     def validate(
         self,
@@ -188,9 +222,7 @@ class TranslationValidator:
             )
             return issues
 
-        # Pattern to match unrestored placeholder tokens: ⟦PH...⟧ or ⟦PH_xxx⟧
-        token_pattern = re.compile(r"⟦PH[^⟧]*⟧")
-        tokens = token_pattern.findall(translated)
+        tokens = _UNRESTORED_TOKEN_RE.findall(translated)
 
         if tokens:
             issues.append(
@@ -261,16 +293,12 @@ class TranslationValidator:
                     )
                 )
 
-        # Check order for format specifiers
-        java_format_pattern = re.compile(r"%(?:\d+\$)?[sdifxXobeEgGaAcChHnp]")
-        source_formats = java_format_pattern.findall(source)
-        translated_formats = java_format_pattern.findall(translated)
+        source_formats = _JAVA_FORMAT_RE.findall(source)
+        translated_formats = _JAVA_FORMAT_RE.findall(translated)
 
         if source_formats and translated_formats:
-            # Check if numbered formats are preserved
-            numbered_pattern = re.compile(r"%(\d+)\$[sdifxXobeEgGaAcChHnp]")
-            source_numbered = numbered_pattern.findall(source)
-            translated_numbered = numbered_pattern.findall(translated)
+            source_numbered = _NUMBERED_FORMAT_RE.findall(source)
+            translated_numbered = _NUMBERED_FORMAT_RE.findall(translated)
 
             if source_numbered != translated_numbered:
                 issues.append(
@@ -304,10 +332,8 @@ class TranslationValidator:
         """
         issues: list[ValidationIssue] = []
 
-        # Check section symbol color codes
-        section_pattern = re.compile(r"§[0-9a-fk-or]", re.IGNORECASE)
-        source_sections = section_pattern.findall(source)
-        translated_sections = section_pattern.findall(translated)
+        source_sections = _SECTION_COLOR_RE.findall(source)
+        translated_sections = _SECTION_COLOR_RE.findall(translated)
 
         if len(source_sections) != len(translated_sections):
             issues.append(
@@ -324,10 +350,8 @@ class TranslationValidator:
                 )
             )
 
-        # Check ampersand color codes
-        ampersand_pattern = re.compile(r"&[0-9a-fk-or]", re.IGNORECASE)
-        source_ampersands = ampersand_pattern.findall(source)
-        translated_ampersands = ampersand_pattern.findall(translated)
+        source_ampersands = _AMPERSAND_COLOR_RE.findall(source)
+        translated_ampersands = _AMPERSAND_COLOR_RE.findall(translated)
 
         if len(source_ampersands) != len(translated_ampersands):
             issues.append(
@@ -420,14 +444,11 @@ class TranslationValidator:
 
         source_lower = source.lower()
 
-        # Check term rules
-        for term in self.glossary.term_rules:
-            # Check if any alias appears in the source
+        for term, alias_patterns in self._compiled_term_patterns:
             alias_found = False
             matched_alias = ""
-            for alias in term.aliases:
-                pattern = r"\b" + re.escape(alias.lower()) + r"\b"
-                if re.search(pattern, source_lower):
+            for alias, pat in alias_patterns:
+                if pat.search(source_lower):
                     alias_found = True
                     matched_alias = alias
                     break
@@ -448,24 +469,14 @@ class TranslationValidator:
                     )
                 )
 
-        # Check proper noun rules
-        for noun in self.glossary.proper_noun_rules:
-            # Check if source_like or any alias appears in the source
+        for noun, candidate_patterns in self._compiled_noun_patterns:
             noun_found = False
             matched_noun = ""
-
-            pattern = r"\b" + re.escape(noun.source_like.lower()) + r"\b"
-            if re.search(pattern, source_lower):
-                noun_found = True
-                matched_noun = noun.source_like
-
-            if not noun_found:
-                for alias in noun.aliases:
-                    alias_pattern = r"\b" + re.escape(alias.lower()) + r"\b"
-                    if re.search(alias_pattern, source_lower):
-                        noun_found = True
-                        matched_noun = alias
-                        break
+            for name, pat in candidate_patterns:
+                if pat.search(source_lower):
+                    noun_found = True
+                    matched_noun = name
+                    break
 
             if noun_found and noun.preferred_ko not in translated:
                 issues.append(

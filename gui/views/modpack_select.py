@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QByteArray, Qt, QThread, QTimer, QUrl, Signal
-from PySide6.QtGui import QPixmap, QResizeEvent
+from PySide6.QtGui import QImage, QPixmap, QResizeEvent
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -166,20 +166,20 @@ class ModpackCard(QFrame):
             if reply.error() == QNetworkReply.NetworkError.NoError:
                 data: QByteArray = reply.readAll()
                 logger.info("Thumbnail data size: %d bytes", data.size())
-                pixmap = QPixmap()
-                if pixmap.loadFromData(data):
+                image = QImage()
+                if image.loadFromData(data):
                     logger.info(
                         "Thumbnail loaded successfully. Size: %dx%d",
-                        pixmap.width(),
-                        pixmap.height(),
+                        image.width(),
+                        image.height(),
                     )
+                    pixmap = QPixmap.fromImage(image)
                     scaled = pixmap.scaled(
                         180,
                         135,
                         Qt.AspectRatioMode.KeepAspectRatioByExpanding,
                         Qt.TransformationMode.SmoothTransformation,
                     )
-                    # Crop to center
                     if scaled.width() > 180 or scaled.height() > 135:
                         x = (scaled.width() - 180) // 2
                         y = (scaled.height() - 135) // 2

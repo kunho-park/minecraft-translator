@@ -84,13 +84,12 @@ class GlossaryFilter:
         filtered = []
 
         for term in term_rules:
-            # Check if any alias appears in the text
-            for alias in term.aliases:
-                # Use word boundaries to avoid partial matches
-                pattern = r"\b" + re.escape(alias.lower()) + r"\b"
-                if re.search(pattern, combined_text):
-                    filtered.append(term)
-                    break
+            if not term.aliases:
+                continue
+            alternatives = "|".join(re.escape(a.lower()) for a in term.aliases)
+            pattern = re.compile(r"\b(?:" + alternatives + r")\b")
+            if pattern.search(combined_text):
+                filtered.append(term)
 
         return filtered
 
@@ -112,18 +111,11 @@ class GlossaryFilter:
         filtered = []
 
         for noun in proper_noun_rules:
-            # Check if source_like appears in text
-            pattern = r"\b" + re.escape(noun.source_like.lower()) + r"\b"
-            if re.search(pattern, combined_text):
+            candidates = [noun.source_like, *noun.aliases]
+            alternatives = "|".join(re.escape(c.lower()) for c in candidates)
+            pattern = re.compile(r"\b(?:" + alternatives + r")\b")
+            if pattern.search(combined_text):
                 filtered.append(noun)
-                continue
-
-            # Also check aliases for matches
-            for alias in noun.aliases:
-                alias_pattern = r"\b" + re.escape(alias.lower()) + r"\b"
-                if re.search(alias_pattern, combined_text):
-                    filtered.append(noun)
-                    break
 
         return filtered
 
