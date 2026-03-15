@@ -10,7 +10,13 @@ from typing import Any
 from dotenv import load_dotenv
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QMainWindow, QStackedWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QMainWindow,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from .config import get_config
 from .i18n import get_translator, set_language
@@ -43,8 +49,8 @@ class MainWindow(QMainWindow):
             "pipeline_result": None,
         }
 
-        self._init_window()
         self._init_auth()
+        self._init_window()
         self._load_views()
 
     def _init_auth(self) -> None:
@@ -60,6 +66,7 @@ class MainWindow(QMainWindow):
     ) -> None:
         """Handle successful login."""
         logger.info("Login complete: %s", user_name)
+        self._refresh_account_widget()
         if hasattr(self, "upload_view"):
             self.upload_view._refresh_account_ui()
 
@@ -126,6 +133,53 @@ class MainWindow(QMainWindow):
             "ko": korean_action,
             "en": english_action,
         }
+
+        # Account button in menu bar (right side)
+        self._create_account_widget()
+
+    def _create_account_widget(self) -> None:
+        """Create account bar widget (added to container layout in _load_views)."""
+        from qfluentwidgets import BodyLabel, PushButton
+
+        self._account_bar = QWidget()
+        self._account_bar.setFixedHeight(40)
+        bar_layout = QHBoxLayout(self._account_bar)
+        bar_layout.setContentsMargins(16, 4, 16, 4)
+        bar_layout.setSpacing(8)
+
+        bar_layout.addStretch()
+
+        self._account_label = BodyLabel("")
+        self._account_label.setStyleSheet("color: #4ade80; font-size: 13px;")
+        self._account_label.setVisible(False)
+        bar_layout.addWidget(self._account_label)
+
+        self._login_action_btn = PushButton("Discord 로그인")
+        self._login_action_btn.setFixedHeight(28)
+        self._login_action_btn.clicked.connect(self.desktop_auth.start_login)
+        bar_layout.addWidget(self._login_action_btn)
+
+        self._logout_action_btn = PushButton("로그아웃")
+        self._logout_action_btn.setFixedHeight(28)
+        self._logout_action_btn.setVisible(False)
+        self._logout_action_btn.clicked.connect(self._on_logout_clicked)
+        bar_layout.addWidget(self._logout_action_btn)
+
+        self._refresh_account_widget()
+
+    def _refresh_account_widget(self) -> None:
+        """Update the menu bar account widget to reflect login state."""
+        token = self.config.get("auth.token")
+        if token:
+            name = self.config.get("auth.user_name", "사용자")
+            self._account_label.setText(name)
+            self._account_label.setVisible(True)
+            self._login_action_btn.setVisible(False)
+            self._logout_action_btn.setVisible(True)
+        else:
+            self._account_label.setVisible(False)
+            self._login_action_btn.setVisible(True)
+            self._logout_action_btn.setVisible(False)
 
     def _change_language(self, language: str) -> None:
         """Change application language.
@@ -230,6 +284,9 @@ class MainWindow(QMainWindow):
         container = QWidget()
         container_layout = QVBoxLayout(container)
         container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(0)
+
+        container_layout.addWidget(self._account_bar)
 
         self.view_stack = QStackedWidget()
         self.view_stack.addWidget(self.welcome_view)  # 0
@@ -674,7 +731,9 @@ class MainWindow(QMainWindow):
     def _on_logout_clicked(self) -> None:
         """Handle logout button click."""
         self.desktop_auth.logout()
-        self.upload_view._refresh_account_ui()
+        self._refresh_account_widget()
+        if hasattr(self, "upload_view"):
+            self.upload_view._refresh_account_ui()
 
     def go_to_step(self, step: int) -> None:
         """Navigate to a specific step.
