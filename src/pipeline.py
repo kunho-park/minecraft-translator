@@ -418,7 +418,7 @@ class TranslationPipeline:
             if result.glossary:
                 self.translator.update_glossary(result.glossary)
                 self.reviewer.update_glossary(result.glossary)
-                self.validator.glossary = result.glossary
+                self.validator.update_glossary(result.glossary)
 
             # Check cancellation
             if self.cancel_check and self.cancel_check():
@@ -756,13 +756,10 @@ class TranslationPipeline:
         if not tasks_to_translate:
             return
 
-        # Calculate total batches across all tasks
         total_batches = sum(
-            len(
-                task.create_batches(
-                    max_entries=self.translator.batch_size,
-                    max_chars=self.translator.max_batch_chars,
-                )
+            task.estimate_batch_count(
+                max_entries=self.translator.batch_size,
+                max_chars=self.translator.max_batch_chars,
             )
             for task in tasks_to_translate
         )
@@ -886,9 +883,10 @@ class TranslationPipeline:
                 finally:
                     queue.task_done()
 
-        # Start workers (limit to reasonable number for file-level parallelism)
-        # Use fewer workers than max_concurrent since each task spawns its own workers
-        num_workers = min(self.config.max_concurrent, len(tasks_to_translate))
+        # Limit file-level workers: each task spawns its own batch-level workers
+        # that already compete for the LLM semaphore, so too many here causes
+        # excessive coroutine contention with no throughput gain.
+        num_workers = min(3, len(tasks_to_translate))
         workers = [asyncio.create_task(worker()) for _ in range(num_workers)]
 
         # Wait for all tasks to be processed
@@ -952,16 +950,17 @@ class TranslationPipeline:
         completed_tasks = [t for t in tasks if t.status == TranslationStatus.COMPLETED]
         total_tasks = len(completed_tasks)
 
-        # Calculate total review batches (50 entries per batch)
+        if not completed_tasks:
+            return 0
+
         total_batches = sum(
-            (len(t.entries) + 49) // 50  # Ceiling division
+            (len(t.entries) + 49) // 50
             for t in completed_tasks
         )
 
         completed_batches = 0
-        current_task = 0
+        completed_task_count = 0
 
-        # Create custom progress callback for reviewer
         def batch_progress_callback(
             message: str, current: int, total: int, stats: dict[str, object]
         ) -> None:
@@ -969,12 +968,12 @@ class TranslationPipeline:
             completed_batches += 1
 
             self._report_progress(
-                f"리뷰 중... ({completed_batches}/{total_batches} 배치, {current_task}/{total_tasks} 파일)",
+                f"리뷰 중... ({completed_batches}/{total_batches} 배치, {completed_task_count}/{total_tasks} 파일)",
                 completed_batches,
                 total_batches,
                 {
                     "reviewed": reviewed_count,
-                    "current_task": current_task,
+                    "current_task": completed_task_count,
                     "total_tasks": total_tasks,
                     "batches": completed_batches,
                     "total_batches": total_batches,
@@ -982,30 +981,51 @@ class TranslationPipeline:
                 },
             )
 
-        # Temporarily replace reviewer's progress callback
         original_callback = self.reviewer.progress_callback
         self.reviewer.progress_callback = batch_progress_callback
 
+        queue: asyncio.Queue[TranslationTask | None] = asyncio.Queue()
         for task in completed_tasks:
-            current_task += 1
+            await queue.put(task)
 
-            # Get source and translated data
-            source_data = {e.key: e.source_text for e in task.entries.values()}
-            translated_data = dict(task.to_output_dict())
+        async def worker() -> None:
+            nonlocal reviewed_count, completed_task_count
+            while True:
+                task = await queue.get()
+                if task is None:
+                    queue.task_done()
+                    break
+                try:
+                    source_data = {e.key: e.source_text for e in task.entries.values()}
+                    translated_data = dict(task.to_output_dict())
 
-            # Review and correct
-            corrected_data, review_result = await self.reviewer.review_and_correct(
-                source_data, translated_data
-            )
+                    corrected_data, review_result = (
+                        await self.reviewer.review_and_correct(
+                            source_data, translated_data
+                        )
+                    )
 
-            reviewed_count += review_result.reviewed_count
+                    reviewed_count += review_result.reviewed_count
+                    completed_task_count += 1
 
-            # Update task entries with corrections
-            for key, value in corrected_data.items():
-                if key in task.entries:
-                    task.entries[key].translated_text = value
+                    for key, value in corrected_data.items():
+                        if key in task.entries:
+                            task.entries[key].translated_text = value
+                except Exception as e:
+                    completed_task_count += 1
+                    logger.error("Review task failed: %s", e)
+                finally:
+                    queue.task_done()
 
-        # Restore original callback
+        num_workers = min(3, len(completed_tasks))
+        workers = [asyncio.create_task(worker()) for _ in range(num_workers)]
+
+        await queue.join()
+
+        for _ in range(num_workers):
+            await queue.put(None)
+        await asyncio.gather(*workers)
+
         self.reviewer.progress_callback = original_callback
 
         return reviewed_count

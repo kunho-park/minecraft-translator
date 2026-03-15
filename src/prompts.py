@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -149,14 +150,14 @@ Task: Translate {source_lang} text into natural {target_lang} while maintaining 
 </role>
 
 ## CRITICAL: Placeholder Protection Rules
-1. **NEVER translate or modify placeholders marked with ⟦PH_xxx⟧**
+1. **NEVER translate or modify placeholders** like ⟦PH1⟧, ⟦PH2⟧, ⟦PH3⟧, etc.
 2. **Copy placeholders EXACTLY as they appear** - including all characters between ⟦ and ⟧
-3. **Do NOT abbreviate**: ⟦PH_0_java_format⟧ must stay as ⟦PH_0_java_format⟧, NOT ⟦PH...⟧
+3. **Do NOT abbreviate or modify**: ⟦PH12⟧ must stay as ⟦PH12⟧, NOT ⟦PH⟧ or ⟦PH...⟧
 4. **Preserve placeholder position** in the translated text
 5. **Example**:
-   - Input: "Kill the ⟦PH_0_named_placeholder⟧"
-   - Output: "⟦PH_0_named_placeholder⟧을(를) 처치하세요"
-   - WRONG: "⟦PH...⟧을(를) 처치하세요"
+   - Input: "Kill the ⟦PH1⟧"
+   - Output: "⟦PH1⟧을(를) 처치하세요"
+   - WRONG: "⟦PH⟧을(를) 처치하세요"
 
 ## CRITICAL: Glossary Compliance
 **You MUST strictly follow ALL glossary rules provided below.** Glossary rules are non-negotiable:
@@ -251,15 +252,13 @@ def build_translator_system_prompt(
 
 def build_translator_user_prompt(texts: Mapping[str, str], target_lang: str) -> str:
     """Build user prompt for batch translation."""
-    lines = [f"Translate the following texts to {target_lang}:", ""]
+    texts_json = json.dumps(dict(texts), ensure_ascii=False, indent=2)
 
-    for key, text in texts.items():
-        lines.append(f'"{key}": "{text}"')
-
-    lines.append("")
-    lines.append(f"Return translated {target_lang} text as JSON for each key.")
-
-    return "\n".join(lines)
+    return (
+        f"Translate the following texts to {target_lang}:\n\n"
+        f"{texts_json}\n\n"
+        f"Return translated {target_lang} text as JSON for each key."
+    )
 
 
 # ==============================================================================

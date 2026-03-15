@@ -208,6 +208,49 @@ class TranslationTask(BaseModel):
         )
         return completed / len(self.entries)
 
+    def estimate_batch_count(
+        self,
+        max_entries: int = 50,
+        max_chars: int | None = None,
+    ) -> int:
+        """Estimate the number of batches without creating batch objects.
+
+        Args:
+            max_entries: Maximum entries per batch.
+            max_chars: Maximum total characters per batch.
+
+        Returns:
+            Estimated batch count.
+        """
+        pending = self.pending_entries
+        if not pending:
+            return 0
+        if max_chars is None:
+            return (len(pending) + max_entries - 1) // max_entries
+
+        count = 1
+        current_chars = 0
+        current_entries = 0
+        for entry in pending:
+            entry_chars = len(entry.key) + len(entry.source_text) + 10
+            if entry_chars > max_chars:
+                if current_entries > 0:
+                    count += 1
+                count += 1
+                current_chars = 0
+                current_entries = 0
+                continue
+            if current_entries > 0 and (
+                current_chars + entry_chars > max_chars
+                or current_entries >= max_entries
+            ):
+                count += 1
+                current_chars = 0
+                current_entries = 0
+            current_chars += entry_chars
+            current_entries += 1
+        return count
+
     def create_batches(
         self,
         max_entries: int = 50,

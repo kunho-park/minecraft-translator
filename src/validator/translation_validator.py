@@ -64,6 +64,14 @@ class TranslationValidator:
             self._precompile_glossary_patterns(glossary)
         logger.info("Initialized TranslationValidator")
 
+    def update_glossary(self, glossary: Glossary | None) -> None:
+        """Update glossary and recompile all regex patterns."""
+        self.glossary = glossary
+        self._compiled_term_patterns = []
+        self._compiled_noun_patterns = []
+        if glossary:
+            self._precompile_glossary_patterns(glossary)
+
     def _precompile_glossary_patterns(self, glossary: Glossary) -> None:
         for term in glossary.term_rules:
             alias_patterns = [

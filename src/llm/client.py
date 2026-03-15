@@ -382,7 +382,7 @@ class LLMConfig(BaseModel):
     api_key: str | None = None  # For cloud providers
 
     # Concurrency settings
-    max_concurrent: int = 15
+    max_concurrent: int = 30
     timeout: float = 120.0
 
     # Rate limiting settings
@@ -412,6 +412,7 @@ class LLMClient:
         """
         self.config = config or LLMConfig()
         self._llm: BaseChatModel | None = None
+        self._structured_llm_cache: dict[type, Any] = {}
         self._semaphore = asyncio.Semaphore(self.config.max_concurrent)
         self.token_callback = TokenUsageCallback(
             token_usage_callback, tpm_limiter=self._create_tpm_limiter()
@@ -666,12 +667,12 @@ class LLMClient:
 
         for extractor in [
             lambda c: c.strip(),
-            lambda c: m.group(1)
-            if (m := re.search(r"```(?:json)?\s*(.*?)\s*```", c, re.DOTALL))
-            else None,
-            lambda c: m.group(0)
-            if (m := re.search(r"\{.*\}", c, re.DOTALL))
-            else None,
+            lambda c: (
+                m.group(1)
+                if (m := re.search(r"```(?:json)?\s*(.*?)\s*```", c, re.DOTALL))
+                else None
+            ),
+            lambda c: m.group(0) if (m := re.search(r"\{.*\}", c, re.DOTALL)) else None,
         ]:
             try:
                 extracted = extractor(content)
@@ -727,17 +728,17 @@ class LLMClient:
             )
 
             if self._is_deepseek_reasoner():
-                return await self._structured_output_via_prompt(
-                    messages, output_schema
+                return await self._structured_output_via_prompt(messages, output_schema)
+
+            if output_schema not in self._structured_llm_cache:
+                so_kwargs: dict[str, Any] = {}
+                if self.config.provider == LLMProvider.DEEPSEEK:
+                    so_kwargs["method"] = "function_calling"
+                self._structured_llm_cache[output_schema] = (
+                    self.llm.with_structured_output(output_schema, **so_kwargs)
                 )
 
-            so_kwargs: dict[str, Any] = {}
-            if self.config.provider == LLMProvider.DEEPSEEK:
-                so_kwargs["method"] = "function_calling"
-
-            structured_llm = self.llm.with_structured_output(
-                output_schema, **so_kwargs
-            )
+            structured_llm = self._structured_llm_cache[output_schema]
             response = await structured_llm.ainvoke(
                 messages, config={"callbacks": [self.token_callback]}
             )
@@ -786,8 +787,8 @@ class LLMClient:
             if hasattr(self.config, key):
                 setattr(self.config, key, value)
 
-        # Reset LLM to apply new config
         self._llm = None
+        self._structured_llm_cache.clear()
         self._semaphore = asyncio.Semaphore(self.config.max_concurrent)
         logger.info("LLM config updated: %s", kwargs)
 
