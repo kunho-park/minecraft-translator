@@ -18,7 +18,6 @@ from qfluentwidgets import (
     PushButton,
     StrongBodyLabel,
     SubtitleLabel,
-    SwitchButton,
 )
 
 if TYPE_CHECKING:
@@ -122,16 +121,7 @@ class UploadView(QWidget):
         version_layout.addWidget(self.modpack_version)
         settings_card_layout.addLayout(version_layout)
 
-        # Anonymous toggle
-        anon_layout = QHBoxLayout()
-        anon_layout.setSpacing(10)
-        anon_label = BodyLabel(t.t("upload.anonymous"))
-        self.anonymous = SwitchButton()
-        self.anonymous.setChecked(True)
-        anon_layout.addWidget(anon_label)
-        anon_layout.addWidget(self.anonymous)
-        anon_layout.addStretch()
-        settings_card_layout.addLayout(anon_layout)
+        self.anonymous_enabled = True
 
         layout.addWidget(settings_card)
 
@@ -221,7 +211,7 @@ class UploadView(QWidget):
         try:
             curseforge_id = int(self.curseforge_id.text())
             version = self.modpack_version.text()
-            anonymous = self.anonymous.isChecked()
+            anonymous = self.anonymous_enabled
 
             if not version:
                 self.status_label.setText("모드팩 버전을 입력해주세요.")
@@ -250,3 +240,15 @@ class UploadView(QWidget):
             message: Status message
         """
         self.status_label.setText(message)
+
+    def reset_after_error(self, error_message: str) -> None:
+        """Reset UI state after upload failure so the user can retry or skip.
+
+        Args:
+            error_message: Error message to display
+        """
+        self.upload_button.setEnabled(True)
+        self.skip_button.setEnabled(True)
+        self.progress_bar.setVisible(False)
+        self.status_label.setText(f"업로드 실패: {error_message}")
+        self.status_label.setVisible(True)

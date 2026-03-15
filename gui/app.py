@@ -641,7 +641,7 @@ class MainWindow(QMainWindow):
             error: Error message
         """
         logger.error("Upload error: %s", error)
-        self.upload_view.update_status(f"업로드 실패: {error}")
+        self.upload_view.reset_after_error(error)
 
     def go_to_step(self, step: int) -> None:
         """Navigate to a specific step.
