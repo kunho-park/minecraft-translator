@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const baseUrl = "https://mcat.2odk.com";
@@ -86,7 +87,10 @@ export default function RootLayout({
       <head>
         <link rel="canonical" href={baseUrl} />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
