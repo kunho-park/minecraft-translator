@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*" # v1.0.0, v0.1.0 등의 태그에 반응
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+          body: |
+            ### 주요 변경 사항
+
+            - 작성중..
+
+            ### 다운로드
+
+            - **Windows**: `AutoTranslate-${{ steps.get_version.outputs.version }}-windows.exe`
+
+            ### 설치 방법
+
+            1. `.exe` 파일을 다운로드합니다.
+            2. 파일을 실행합니다.
+            3. Windows Defender 경고가 나타나면 "추가 정보" → "실행"을 클릭합니다. (인증서 문제)
+
+  build-windows:
+    name: Build Windows Executable
+    needs: create-release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        run: |
+          pip install uv
+
+      - name: Install dependencies
+        run: |
+          uv sync
+
+      - name: Install PyInstaller
+        run: |
+          uv add --dev pyinstaller
+
+      - name: Build executable
+        run: |
+          uv run pyinstaller --clean --noconfirm gui_build.spec
+
+      - name: Rename executable
+        run: |
+          Move-Item -Path "dist\AutoTranslate.exe" -Destination "dist\AutoTranslate-${{ needs.create-release.outputs.version }}-windows.exe"
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./dist/AutoTranslate-${{ needs.create-release.outputs.version }}-windows.exe
+          asset_name: AutoTranslate-${{ needs.create-release.outputs.version }}-windows.exe
+          asset_content_type: application/octet-stream
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-executable
+          path: ./dist/AutoTranslate-${{ needs.create-release.outputs.version }}-windows.exe
+          retention-days: 7

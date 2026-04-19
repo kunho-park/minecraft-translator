@@ -1,0 +1,13 @@
+# Vanilla Minecraft Glossaries
+
+This directory contains vanilla Minecraft glossaries for different language pairs.
+
+Files are automatically generated using `tools/build_vanilla_glossary.py` and follow the naming convention:
+- `vanilla_glossary_{source_locale}_{target_locale}.json`
+
+Examples:
+- `vanilla_glossary_en_us_ko_kr.json` - English to Korean
+- `vanilla_glossary_en_us_ja_jp.json` - English to Japanese
+- `vanilla_glossary_en_us_zh_cn.json` - English to Chinese
+
+These glossaries are automatically loaded during translation based on the selected language pair.
