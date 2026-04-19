@@ -6,9 +6,12 @@ that can be used as a foundation for all modpack translations.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from pathlib import Path
+
+import aiofiles
 
 from ..models import Glossary, TermRule
 
@@ -44,7 +47,7 @@ class VanillaGlossaryBuilder:
             target_locale,
         )
 
-    def build(self, output_path: Path | None = None) -> Glossary:
+    async def build(self, output_path: Path | None = None) -> Glossary:
         """Build vanilla glossary from language files.
 
         Args:
@@ -60,9 +63,10 @@ class VanillaGlossaryBuilder:
         """
         logger.info("Building vanilla glossary...")
 
-        # Load language files
-        source_data = self._load_json(self.source_lang_file)
-        target_data = self._load_json(self.target_lang_file)
+        source_data, target_data = await asyncio.gather(
+            self._load_json(self.source_lang_file),
+            self._load_json(self.target_lang_file),
+        )
 
         logger.info(
             "Loaded %d source entries, %d target entries",
@@ -70,23 +74,20 @@ class VanillaGlossaryBuilder:
             len(target_data),
         )
 
-        # Extract terms by category
         terms = self._extract_terms(source_data, target_data)
 
-        # Create glossary
         glossary = Glossary(
             term_rules=terms,
-            proper_noun_rules=[],  # Can be manually added later
-            formatting_rules=[],  # Can be manually added later
+            proper_noun_rules=[],
+            formatting_rules=[],
         )
 
         logger.info("Built glossary with %d terms", len(terms))
 
-        # Determine output path
         if output_path is None:
             output_path = self._get_default_output_path()
 
-        self._save_glossary(glossary, output_path)
+        await self._save_glossary(glossary, output_path)
 
         return glossary
 
@@ -98,14 +99,13 @@ class VanillaGlossaryBuilder:
         """
         filename = f"vanilla_glossary_{self.source_locale}_{self.target_locale}.json"
 
-        # Save to src/glossary/vanilla_glossaries/
         current_dir = Path(__file__).parent
         vanilla_dir = current_dir / "vanilla_glossaries"
         vanilla_dir.mkdir(parents=True, exist_ok=True)
 
         return vanilla_dir / filename
 
-    def _load_json(self, file_path: Path) -> dict[str, str]:
+    async def _load_json(self, file_path: Path) -> dict[str, str]:
         """Load JSON language file.
 
         Args:
@@ -121,13 +121,14 @@ class VanillaGlossaryBuilder:
         if not file_path.exists():
             raise FileNotFoundError(f"Language file not found: {file_path}")
 
-        with open(file_path, encoding="utf-8") as f:
-            data = json.load(f)
+        async with aiofiles.open(file_path, encoding="utf-8") as f:
+            raw = await f.read()
+        data = json.loads(raw)
 
         if not isinstance(data, dict):
             raise ValueError(f"Expected dictionary in {file_path}")
 
-        return data  # type: ignore[return-value]
+        return data
 
     def _extract_terms(
         self, source_data: dict[str, str], target_data: dict[str, str]
@@ -199,7 +200,7 @@ class VanillaGlossaryBuilder:
 
         return terms
 
-    def _save_glossary(self, glossary: Glossary, output_path: Path) -> None:
+    async def _save_glossary(self, glossary: Glossary, output_path: Path) -> None:
         """Save glossary to JSON file.
 
         Args:
@@ -208,7 +209,6 @@ class VanillaGlossaryBuilder:
         """
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Convert to dict
         glossary_dict = {
             "term_rules": [
                 {
@@ -223,14 +223,15 @@ class VanillaGlossaryBuilder:
             "proper_noun_rules": [],
             "formatting_rules": [],
         }
+        serialized = json.dumps(glossary_dict, ensure_ascii=False, indent=2)
 
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(glossary_dict, f, ensure_ascii=False, indent=2)
+        async with aiofiles.open(output_path, "w", encoding="utf-8") as f:
+            await f.write(serialized)
 
         logger.info("Saved vanilla glossary to: %s", output_path)
 
 
-def main() -> None:
+async def main() -> None:
     """CLI entry point for building vanilla glossary."""
     import argparse
 
@@ -276,32 +277,31 @@ def main() -> None:
     )
 
     try:
-        # Build glossary
         builder = VanillaGlossaryBuilder(
             args.source,
             args.target,
             args.source_locale,
             args.target_locale,
         )
-        glossary = builder.build(args.output)
+        glossary = await builder.build(args.output)
 
-        # Get actual output path
         output_path = args.output or builder._get_default_output_path()
 
-        print("\n✅ Vanilla glossary created successfully!")
-        print(f"   Location: {output_path}")
-        print(f"   Language pair: {args.source_locale} → {args.target_locale}")
-        print(f"   Terms: {len(glossary.term_rules)}")
-        print(
-            "\n📝 The glossary has been saved and will be automatically used"
-            "\n   for all translations with this language pair!"
+        logger.info("Vanilla glossary created successfully")
+        logger.info("Location: %s", output_path)
+        logger.info(
+            "Language pair: %s -> %s", args.source_locale, args.target_locale
+        )
+        logger.info("Terms: %d", len(glossary.term_rules))
+        logger.info(
+            "The glossary has been saved and will be automatically used "
+            "for all translations with this language pair."
         )
 
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
+    except Exception:
         logger.exception("Failed to build vanilla glossary")
         return
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

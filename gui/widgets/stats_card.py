@@ -98,14 +98,16 @@ class StatsCard(CardWidget):
 
 class ScanStatsCard(StatsCard):
     """Specialized card for scan statistics."""
-    
+
     def __init__(self, parent: object = None) -> None:
         """Initialize scan stats card.
-        
+
         Args:
             parent: Parent widget
         """
-        super().__init__("스캔 통계", parent)
+        from ..i18n import get_translator
+
+        super().__init__(get_translator().t("scan_result.stats_card_title"), parent)
         self._init_stats()
     
     def _init_stats(self) -> None:
@@ -121,14 +123,18 @@ class ScanStatsCard(StatsCard):
 
 class TranslationStatsCard(StatsCard):
     """Specialized card for translation statistics."""
-    
+
     def __init__(self, parent: object = None) -> None:
         """Initialize translation stats card.
-        
+
         Args:
             parent: Parent widget
         """
-        super().__init__("번역 통계", parent)
+        from ..i18n import get_translator
+
+        super().__init__(
+            get_translator().t("translation_progress.stats.title"), parent
+        )
         self._init_stats()
     
     def _init_stats(self) -> None:

@@ -40,19 +40,34 @@ class UpdateWorker(QThread):
     updateError = Signal(str)
     noUpdate = Signal()
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        """Request cancellation. Best-effort: an in-flight HTTP call cannot be aborted."""
+        self._cancelled = True
+
     def run(self) -> None:
         """Run update check."""
         try:
+            if self._cancelled:
+                return
             logger.info("Checking for updates from %s", UPDATE_URL)
             req = Request(UPDATE_URL)
             req.add_header("Accept", "application/vnd.github.v3+json")
             req.add_header("User-Agent", "Modpack-Translator-GUI")
 
             with urlopen(req, timeout=10) as response:
+                if self._cancelled:
+                    return
                 if response.status != 200:
                     raise URLError(f"HTTP {response.status}")
 
                 data = json.loads(response.read().decode())
+
+                if self._cancelled:
+                    return
 
                 latest_tag = data.get("tag_name", "0.0.0")
                 latest_version = parse_version(latest_tag)
@@ -72,5 +87,8 @@ class UpdateWorker(QThread):
                     self.noUpdate.emit()
 
         except Exception as e:
+            if self._cancelled:
+                logger.debug("Update check cancelled: %s", e)
+                return
             logger.warning("Failed to check for updates: %s", e)
             self.updateError.emit(str(e))

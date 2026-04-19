@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from src.llm import LLMClient
 from src.models import (
     Glossary,
+    ProgressCallback,
     TranslationBatch,
     TranslationEntry,
     TranslationStatus,
@@ -56,7 +57,7 @@ class BatchTranslator:
         glossary: Glossary | None = None,
         batch_size: int = DEFAULT_BATCH_SIZE,
         max_batch_chars: int | None = DEFAULT_MAX_BATCH_CHARS,
-        progress_callback: object | None = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         """Initialize the translator.
 
@@ -152,12 +153,12 @@ class BatchTranslator:
                                     "batch": completed_batches,
                                     "total_batches": total_batches,
                                 },
-                            )  # type: ignore[misc]
+                            )
                         except Exception as e:
                             logger.warning("Progress callback failed: %s", e)
                 except Exception as e:
                     batch_results[batch.batch_id] = e
-                    logger.error("Batch translation failed: %s", e)
+                    logger.exception("Batch translation failed for batch %d: %s", batch.batch_id, e)
                 finally:
                     queue.task_done()
 
@@ -341,7 +342,7 @@ class BatchTranslator:
             return translations
 
         except Exception as e:
-            logger.error("Batch %d translation failed: %s", batch.batch_id, e)
+            logger.exception("Batch %d translation failed: %s", batch.batch_id, e)
             raise
 
     def _build_translation_prompt(self, texts: dict[str, str]) -> str:

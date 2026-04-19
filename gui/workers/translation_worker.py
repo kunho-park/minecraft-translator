@@ -11,8 +11,13 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QThread, Signal
 
 if TYPE_CHECKING:
-    from src.models import LanguageFilePair
-    from src.pipeline import PipelineResult
+    from src import (
+        CancelCheck,
+        LanguageFilePair,
+        PipelineResult,
+        ProgressCallback,
+        ProgressStats,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -86,10 +91,17 @@ class TranslationWorker(QThread):
             )
 
             # Create pipeline with progress callback
+            progress_callback: ProgressCallback = self._emit_progress_throttled
+
+            def cancel_check() -> bool:
+                return self._is_cancelled
+
+            cancel_check_callback: CancelCheck = cancel_check
+
             pipeline = TranslationPipeline(
                 pipeline_config,
-                progress_callback=self._emit_progress_throttled,
-                cancel_check=lambda: self._is_cancelled,
+                progress_callback=progress_callback,
+                cancel_check=cancel_check_callback,
             )
 
             # Run pipeline in event loop
@@ -145,7 +157,7 @@ class TranslationWorker(QThread):
         message: str,
         current: int,
         total: int,
-        stats: dict[str, object] | None = None,
+        stats: ProgressStats | None = None,
     ) -> None:
         """Emit progress update with throttling.
 
@@ -161,7 +173,7 @@ class TranslationWorker(QThread):
         now = time.time()
         if now - self._last_update_time >= self._update_throttle:
             logger.info("Emitting progress: %s (%d/%d)", message, current, total)
-            self.progressUpdate.emit(message, current, total, stats or {})
+            self.progressUpdate.emit(message, current, total, dict(stats or {}))
             self._last_update_time = now
         else:
             logger.debug("Throttled (%.2fs since last)", now - self._last_update_time)

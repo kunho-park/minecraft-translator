@@ -252,7 +252,13 @@ class ScannerThread(QThread):
             if not launcher_path.exists():
                 continue
 
-            self.scanProgress.emit(f"{launcher_name} 스캔 중...")
+            from ..i18n import get_translator
+
+            self.scanProgress.emit(
+                get_translator().t(
+                    "modpack_select.scanning_launcher", launcher=launcher_name
+                )
+            )
             logger.info("Scanning %s: %s", launcher_name, launcher_path)
 
             try:
@@ -410,7 +416,7 @@ class ModpackSelectionView(QWidget):
         self.progress_bar.setFixedHeight(4)
         loading_layout.addWidget(self.progress_bar)
 
-        self.loading_label = CaptionLabel("모드팩 스캔 중...")
+        self.loading_label = CaptionLabel(t.t("modpack_select.scanning_initial"))
         self.loading_label.setStyleSheet("color: #888888;")
         loading_layout.addWidget(self.loading_label)
 

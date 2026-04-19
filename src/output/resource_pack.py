@@ -16,7 +16,7 @@ from ..handlers.base import create_default_registry
 from .jar_mod import JarModGenerator
 
 if TYPE_CHECKING:
-    from ..models import TranslationTask
+    from ..models import ProgressCallback, TranslationTask
 
 
 logger = logging.getLogger(__name__)
@@ -138,7 +138,7 @@ class ResourcePackGenerator:
                 if namespace not in merged_lang_data:
                     merged_lang_data[namespace] = {}
                 merged_lang_data[namespace].update(task.to_output_dict())
-            except Exception as e:
+            except (ValueError, TypeError, KeyError) as e:
                 error_msg = f"Failed to process {task.file_pair.namespace}: {e}"
                 logger.error(error_msg)
                 result.errors.append(error_msg)
@@ -154,7 +154,7 @@ class ResourcePackGenerator:
                     )
                 files_count += 1
                 logger.debug("Wrote language file: %s", lang_file)
-            except Exception as e:
+            except (OSError, ValueError, TypeError) as e:
                 error_msg = f"Failed to write lang file for {namespace}: {e}"
                 logger.error(error_msg)
                 result.errors.append(error_msg)
@@ -164,7 +164,7 @@ class ResourcePackGenerator:
             try:
                 await self._write_patchouli_file(task, assets_dir)
                 files_count += 1
-            except Exception as e:
+            except (OSError, ValueError, TypeError) as e:
                 error_msg = f"Failed to write patchouli file {task.file_pair.source_path}: {e}"
                 logger.error(error_msg)
                 result.errors.append(error_msg)
@@ -325,7 +325,7 @@ class OverrideGenerator:
                     )
                     if file_path:
                         generated_files.append(file_path)
-                except Exception as e:
+                except (OSError, ValueError, TypeError) as e:
                     logger.error(
                         "Failed to write override for %s: %s",
                         task.file_pair.source_path,
@@ -397,7 +397,7 @@ class OverrideGenerator:
                 await handler.apply(source_path, output_data, output_path)
                 logger.debug("Wrote override file using handler: %s", output_path)
                 return output_path
-            except Exception as e:
+            except (OSError, ValueError, TypeError) as e:
                 logger.warning(
                     "Handler failed to apply overrides for %s, falling back to parser: %s",
                     source_path,
@@ -424,7 +424,7 @@ async def generate_outputs(
     modpack_root: Path | str,
     pack_config: ResourcePackConfig | None = None,
     create_zip: bool = True,
-    progress_callback: object | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> GenerationResult:
     """Convenience function to generate all outputs.
 

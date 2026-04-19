@@ -40,7 +40,14 @@ class ModpackTreeItem(QTreeWidgetItem):
         """
         self.is_mod_group = True
         self.mod_id = mod_id
-        self.setText(0, f"{mod_id} ({file_count}개 파일)")
+        from ..i18n import get_translator
+
+        self.setText(
+            0,
+            get_translator().t(
+                "modpack_tree.mod_with_files", mod_id=mod_id, count=file_count
+            ),
+        )
         self.setFlags(self.flags() | Qt.ItemFlag.ItemIsAutoTristate)
 
     def set_as_file(self, file_pair: LanguageFilePair) -> None:

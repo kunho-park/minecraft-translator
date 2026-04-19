@@ -17,6 +17,11 @@
         "filter": "필터",
         "all": "전체"
     },
+    "auth": {
+        "login_discord": "Discord 로그인",
+        "logout": "로그아웃",
+        "default_user": "사용자"
+    },
     "welcome": {
         "title": "마인크래프트 모드팩 번역기에 오신 것을 환영합니다!",
         "description": "모드팩을 번역하거나, 이미 번역된 모드팩을 다운로드하세요.",
@@ -40,16 +45,22 @@
         "scan_complete_msg": "{count}개의 모드팩을 찾았습니다.",
         "no_modpacks": "모드팩 없음",
         "no_modpacks_msg": "자동으로 모드팩을 찾을 수 없습니다. 수동으로 선택해주세요.",
-        "select_folder": "모드팩 폴더 선택"
+        "select_folder": "모드팩 폴더 선택",
+        "scanning_initial": "모드팩 스캔 중...",
+        "scanning_launcher": "{launcher} 스캔 중...",
+        "scan_dialog_title": "모드팩 스캔 중",
+        "scan_dialog_message": "파일 검색 중..."
     },
     "scan_result": {
         "title": "스캔 결과",
         "settings_title": "번역 설정",
+        "stats_card_title": "스캔 통계",
         "stats": {
             "source_files": "원문 파일",
             "target_files": "번역 파일",
             "paired": "매칭된 파일",
-            "source_only": "번역 대상"
+            "source_only": "번역 대상",
+            "total_files": "총 파일 수"
         },
         "language": {
             "source": "원문 언어:",
@@ -63,13 +74,20 @@
             "batch_size": "배치 크기:",
             "max_concurrent": "동시 실행:",
             "rpm": "RPM 제한:",
-            "tpm": "TPM 제한:"
+            "tpm": "TPM 제한:",
+            "placeholder": {
+                "base_url": "Base URL",
+                "api_key": "API Key (선택사항)"
+            },
+            "rpm_tooltip": "API 요청 속도 제한 (분당 요청 수)\n0 = 제한 없음\n클라우드 API 사용 시 rate limit 오류 방지용",
+            "tpm_tooltip": "API 토큰 속도 제한 (분당 토큰 수)\n0 = 제한 없음\n예: 4000000 = 4M TPM\n클라우드 API 사용 시 rate limit 오류 방지용"
         },
         "options": {
             "title": "파이프라인 옵션",
             "skip_glossary": "용어집 건너뛰기:",
             "skip_review": "리뷰 건너뛰기:",
-            "save_glossary": "모드팩 용어집 저장:"
+            "save_glossary": "모드팩 용어집 저장:",
+            "save_glossary_tooltip": "모드팩 전용 용어집을 저장합니다 (바닐라 용어집은 제외)\n나중에 용어집을 재사용하거나 수동으로 편집할 수 있습니다"
         }
     },
     "category_select": {
@@ -81,7 +99,8 @@
         },
         "start_translation": "번역 시작",
         "no_selection": "선택 없음",
-        "no_selection_msg": "번역할 파일을 선택해주세요."
+        "no_selection_msg": "번역할 파일을 선택해주세요.",
+        "page_initial": "1 / 1"
     },
     "translation_progress": {
         "title": "번역 진행 중",
@@ -94,14 +113,39 @@
         },
         "log_title": "진행 로그",
         "stop": "중단",
-        "estimated_time": "예상 남은 시간:"
+        "estimated_time": "예상 남은 시간:",
+        "status": {
+            "preparing": "준비 중..."
+        },
+        "stats_title": "번역 통계",
+        "label": {
+            "total": "전체 항목:",
+            "completed": "완료:",
+            "failed": "실패:",
+            "rate": "성공률:",
+            "input_tokens": "🪙 입력 토큰:",
+            "output_tokens": "🪙 출력 토큰:",
+            "total_tokens": "🪙 총 토큰:"
+        },
+        "eta": {
+            "calculating": "⏱ 남은 시간 계산 중...",
+            "remaining": "⏱ 남은 시간: {time}",
+            "format": {
+                "seconds": "{seconds}초",
+                "minutes_only": "{minutes}분",
+                "minutes_seconds": "{minutes}분 {seconds}초",
+                "hours_only": "{hours}시간",
+                "hours_minutes": "{hours}시간 {minutes}분"
+            }
+        }
     },
     "retry": {
         "title": "재시도",
         "description": "실패한 번역이 있습니다. 재시도하시겠습니까?",
         "retry_button": "재시도",
         "skip_button": "건너뛰기",
-        "failed_files": "실패한 파일"
+        "failed_files": "실패한 파일",
+        "file_failed_count": "{file}: {count}개 실패"
     },
     "review": {
         "title": "번역 리뷰",
@@ -121,7 +165,40 @@
         "skip_button": "건너뛰기",
         "uploading": "업로드 중...",
         "upload_success": "업로드 성공",
-        "upload_failed": "업로드 실패"
+        "upload_failed": "업로드 실패",
+        "section": {
+            "modpack_info": "모드팩 정보",
+            "settings": "업로드 설정",
+            "account": "계정"
+        },
+        "label": {
+            "modpack_name_initial": "모드팩: -",
+            "version_initial": "버전: -",
+            "curseforge_id_initial": "CurseForge ID: -",
+            "modpack_name": "모드팩: {name}",
+            "version": "버전: {version}",
+            "curseforge_id": "CurseForge ID: {id}",
+            "version_unknown_value": "알 수 없음",
+            "curseforge_not_detected": "CurseForge ID: 감지 안됨",
+            "modpack_unknown": "모드팩: 알 수 없음",
+            "version_unknown": "버전: 알 수 없음",
+            "curseforge_id_unknown": "CurseForge ID: 알 수 없음"
+        },
+        "placeholder": {
+            "auto_detected": "자동 감지됨 - 필요시 수정"
+        },
+        "account": {
+            "login_hint": "로그인하면 업로드가 계정에 연결됩니다.",
+            "logged_in_as": "{name}님으로 로그인됨",
+            "default_user": "사용자"
+        },
+        "auto_detect_failed_title": "자동 감지 실패",
+        "auto_detect_failed_msg": "모드팩 정보를 찾을 수 없습니다. 수동으로 입력해주세요.",
+        "version_required": "모드팩 버전을 입력해주세요.",
+        "uploading_status": "업로드 중...",
+        "preparing_status": "업로드 준비 중...",
+        "invalid_curseforge_id": "올바른 CurseForge ID를 입력해주세요.",
+        "upload_failed_msg": "업로드 실패: {error}"
     },
     "completion": {
         "title": "완료!",
@@ -139,7 +216,24 @@
         },
         "review_button": "리뷰",
         "upload_button": "업로드",
-        "new_translation": "새 번역 시작"
+        "new_translation": "새 번역 시작",
+        "stats_title": "번역 통계",
+        "token_usage_initial": "🪙 토큰 사용량: -",
+        "stats_format": {
+            "duration": "소요 시간: {duration:.1f}초",
+            "total_entries": "전체 항목: {total:,}",
+            "translated": "번역 완료: {translated:,}",
+            "success_rate": "성공률: {rate:.1f}%",
+            "token_usage": "🪙 토큰 사용량: {total:,} (입력: {input:,}, 출력: {output:,})",
+            "resource_pack": "리소스팩: {path}"
+        },
+        "review_info_title": "리뷰 기능",
+        "review_info_msg": "리뷰는 번역 중 자동으로 실행됩니다. 설정에서 '리뷰 건너뛰기'를 비활성화하세요."
+    },
+    "progress_card": {
+        "status": {
+            "preparing": "준비 중..."
+        }
     },
     "settings": {
         "title": "설정",
@@ -171,6 +265,14 @@
         "headers": {
             "file": "파일",
             "handler": "핸들러"
-        }
+        },
+        "mod_with_files": "{mod_id} ({count}개 파일)"
+    },
+    "scanner": {
+        "starting": "모드팩 스캔 시작...",
+        "complete": "스캔 완료!"
+    },
+    "welcome_links": {
+        "usage_guide": "사용법 설명서"
     }
 }

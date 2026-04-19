@@ -64,9 +64,12 @@ class UploadWorker(QThread):
                 TranslationConfig,
                 TranslationStats,
             )
-            
+            from gui.i18n import get_translator
+
+            t = get_translator()
+
             logger.info("Starting upload to %s", self.api_url)
-            self.uploadProgress.emit("업로드 준비 중...")
+            self.uploadProgress.emit(t.t("upload.preparing_status"))
             
             # Prepare translation config
             translation_config: TranslationConfig = {
@@ -98,7 +101,7 @@ class UploadWorker(QThread):
             asyncio.set_event_loop(loop)
             
             try:
-                self.uploadProgress.emit("업로드 중...")
+                self.uploadProgress.emit(t.t("upload.uploading_status"))
                 
                 result = loop.run_until_complete(
                     upload_to_website(

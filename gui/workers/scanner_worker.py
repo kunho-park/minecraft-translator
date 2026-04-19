@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -9,7 +10,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QThread, Signal
 
 if TYPE_CHECKING:
-    from src.scanner import ScanResult
+    from src import ScanProgressCallback
 
 logger = logging.getLogger(__name__)
 
@@ -67,25 +68,34 @@ class ScannerWorker(QThread):
     def run(self) -> None:
         """Run the scanning operation."""
         try:
-            from src.scanner import ModpackScanner
-            
+            from src import ModpackScanner
+            from gui.i18n import get_translator
+
+            t = get_translator()
+
             logger.info("Starting modpack scan: %s", self.modpack_path)
-            self.scanProgress.emit("모드팩 스캔 시작...", 0, 100)
+            self.scanProgress.emit(t.t("scanner.starting"), 0, 100)
             
             # Create scanner with progress callback
+            progress_callback: ScanProgressCallback = self._progress_callback
             scanner = ModpackScanner(
                 self.source_locale,
                 self.target_locale,
-                progress_callback=self._progress_callback,
+                progress_callback=progress_callback,
             )
             
-            # Scan modpack
-            result = scanner.scan(self.modpack_path)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            try:
+                result = loop.run_until_complete(scanner.scan(self.modpack_path))
+            finally:
+                loop.close()
             
             if self._is_cancelled:
                 return
-            
-            self.scanProgress.emit("스캔 완료!", 100, 100)
+
+            self.scanProgress.emit(t.t("scanner.complete"), 100, 100)
             self.scanComplete.emit(result)
             
             logger.info(

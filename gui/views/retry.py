@@ -91,7 +91,12 @@ class RetryView(QWidget):
         """
         self.failed_list.clear()
         
+        from ..i18n import get_translator
+
+        t = get_translator()
         failed_summary = result.get_failed_summary()
         for file_path, count in failed_summary.items():
-            item = QListWidgetItem(f"{file_path}: {count}개 실패")
+            item = QListWidgetItem(
+                t.t("retry.file_failed_count", file=file_path, count=count)
+            )
             self.failed_list.addItem(item)

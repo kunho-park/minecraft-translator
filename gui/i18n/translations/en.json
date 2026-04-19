@@ -17,6 +17,11 @@
     "filter": "Filter",
     "all": "All"
   },
+  "auth": {
+    "login_discord": "Discord Login",
+    "logout": "Logout",
+    "default_user": "User"
+  },
   "welcome": {
     "title": "Welcome to Minecraft Modpack Translator!",
     "description": "Translate modpacks or download already translated ones.",
@@ -40,16 +45,22 @@
     "scan_complete_msg": "Found {count} modpack(s).",
     "no_modpacks": "No Modpacks",
     "no_modpacks_msg": "No modpacks found automatically. Please select manually.",
-    "select_folder": "Select Modpack Folder"
+    "select_folder": "Select Modpack Folder",
+    "scanning_initial": "Scanning modpacks...",
+    "scanning_launcher": "Scanning {launcher}...",
+    "scan_dialog_title": "Scanning Modpack",
+    "scan_dialog_message": "Searching files..."
   },
   "scan_result": {
     "title": "Scan Result",
     "settings_title": "Translation Settings",
+    "stats_card_title": "Scan Statistics",
     "stats": {
       "source_files": "Source Files",
       "target_files": "Target Files",
       "paired": "Paired Files",
-      "source_only": "To Translate"
+      "source_only": "To Translate",
+      "total_files": "Total Files"
     },
     "language": {
       "source": "Source Language:",
@@ -63,13 +74,20 @@
       "batch_size": "Batch Size:",
       "max_concurrent": "Max Concurrent:",
       "rpm": "RPM Limit:",
-      "tpm": "TPM Limit:"
+      "tpm": "TPM Limit:",
+      "placeholder": {
+        "base_url": "Base URL",
+        "api_key": "API Key (optional)"
+      },
+      "rpm_tooltip": "API request rate limit (requests per minute)\n0 = no limit\nUse to avoid rate limit errors with cloud APIs",
+      "tpm_tooltip": "API token rate limit (tokens per minute)\n0 = no limit\nExample: 4000000 = 4M TPM\nUse to avoid rate limit errors with cloud APIs"
     },
     "options": {
       "title": "Pipeline Options",
       "skip_glossary": "Skip Glossary:",
       "skip_review": "Skip Review:",
-      "save_glossary": "Save Modpack Glossary:"
+      "save_glossary": "Save Modpack Glossary:",
+      "save_glossary_tooltip": "Saves a modpack-specific glossary (excludes the vanilla glossary)\nYou can reuse the glossary later or edit it manually"
     }
   },
   "category_select": {
@@ -81,7 +99,8 @@
     },
     "start_translation": "Start Translation",
     "no_selection": "No Selection",
-    "no_selection_msg": "Please select files to translate."
+    "no_selection_msg": "Please select files to translate.",
+    "page_initial": "1 / 1"
   },
   "translation_progress": {
     "title": "Translation in Progress",
@@ -94,14 +113,39 @@
     },
     "log_title": "Progress Log",
     "stop": "Stop",
-    "estimated_time": "Estimated Time Remaining:"
+    "estimated_time": "Estimated Time Remaining:",
+    "status": {
+      "preparing": "Preparing..."
+    },
+    "stats_title": "Translation Statistics",
+    "label": {
+      "total": "Total Entries:",
+      "completed": "Completed:",
+      "failed": "Failed:",
+      "rate": "Success Rate:",
+      "input_tokens": "🪙 Input Tokens:",
+      "output_tokens": "🪙 Output Tokens:",
+      "total_tokens": "🪙 Total Tokens:"
+    },
+    "eta": {
+      "calculating": "⏱ Calculating remaining time...",
+      "remaining": "⏱ Time remaining: {time}",
+      "format": {
+        "seconds": "{seconds}s",
+        "minutes_only": "{minutes}m",
+        "minutes_seconds": "{minutes}m {seconds}s",
+        "hours_only": "{hours}h",
+        "hours_minutes": "{hours}h {minutes}m"
+      }
+    }
   },
   "retry": {
     "title": "Retry",
     "description": "Some translations failed. Would you like to retry?",
     "retry_button": "Retry",
     "skip_button": "Skip",
-    "failed_files": "Failed Files"
+    "failed_files": "Failed Files",
+    "file_failed_count": "{file}: {count} failed"
   },
   "review": {
     "title": "Translation Review",
@@ -121,7 +165,40 @@
     "skip_button": "Skip",
     "uploading": "Uploading...",
     "upload_success": "Upload Successful",
-    "upload_failed": "Upload Failed"
+    "upload_failed": "Upload Failed",
+    "section": {
+      "modpack_info": "Modpack Info",
+      "settings": "Upload Settings",
+      "account": "Account"
+    },
+    "label": {
+      "modpack_name_initial": "Modpack: -",
+      "version_initial": "Version: -",
+      "curseforge_id_initial": "CurseForge ID: -",
+      "modpack_name": "Modpack: {name}",
+      "version": "Version: {version}",
+      "curseforge_id": "CurseForge ID: {id}",
+      "version_unknown_value": "Unknown",
+      "curseforge_not_detected": "CurseForge ID: Not Detected",
+      "modpack_unknown": "Modpack: Unknown",
+      "version_unknown": "Version: Unknown",
+      "curseforge_id_unknown": "CurseForge ID: Unknown"
+    },
+    "placeholder": {
+      "auto_detected": "Auto-detected - edit if needed"
+    },
+    "account": {
+      "login_hint": "Log in to associate uploads with your account.",
+      "logged_in_as": "Logged in as {name}",
+      "default_user": "User"
+    },
+    "auto_detect_failed_title": "Auto-detection Failed",
+    "auto_detect_failed_msg": "Could not find modpack info. Please enter it manually.",
+    "version_required": "Please enter the modpack version.",
+    "uploading_status": "Uploading...",
+    "preparing_status": "Preparing upload...",
+    "invalid_curseforge_id": "Please enter a valid CurseForge ID.",
+    "upload_failed_msg": "Upload failed: {error}"
   },
   "completion": {
     "title": "Complete!",
@@ -139,7 +216,24 @@
     },
     "review_button": "Review",
     "upload_button": "Upload",
-    "new_translation": "Start New Translation"
+    "new_translation": "Start New Translation",
+    "stats_title": "Translation Statistics",
+    "token_usage_initial": "🪙 Token Usage: -",
+    "stats_format": {
+      "duration": "Duration: {duration:.1f}s",
+      "total_entries": "Total Entries: {total:,}",
+      "translated": "Translated: {translated:,}",
+      "success_rate": "Success Rate: {rate:.1f}%",
+      "token_usage": "🪙 Token Usage: {total:,} (Input: {input:,}, Output: {output:,})",
+      "resource_pack": "Resource Pack: {path}"
+    },
+    "review_info_title": "Review Feature",
+    "review_info_msg": "Review runs automatically during translation. Disable 'Skip Review' in settings."
+  },
+  "progress_card": {
+    "status": {
+      "preparing": "Preparing..."
+    }
   },
   "settings": {
     "title": "Settings",
@@ -171,6 +265,14 @@
     "headers": {
       "file": "File",
       "handler": "Handler"
-    }
+    },
+    "mod_with_files": "{mod_id} ({count} files)"
+  },
+  "scanner": {
+    "starting": "Starting modpack scan...",
+    "complete": "Scan complete!"
+  },
+  "welcome_links": {
+    "usage_guide": "User Guide"
   }
 }

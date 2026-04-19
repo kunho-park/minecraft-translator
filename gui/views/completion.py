@@ -69,7 +69,7 @@ class CompletionView(QWidget):
         stats_layout.setSpacing(12)
         stats_layout.setContentsMargins(25, 25, 25, 25)
 
-        stats_title = BodyLabel("번역 통계")
+        stats_title = BodyLabel(t.t("completion.stats_title"))
         stats_title.setProperty("class", "subtitle")
         stats_layout.addWidget(stats_title)
 
@@ -77,7 +77,7 @@ class CompletionView(QWidget):
         self.total_label = BodyLabel(t.t("completion.stats.total_entries") + " -")
         self.translated_label = BodyLabel(t.t("completion.stats.translated") + " -")
         self.success_rate_label = BodyLabel(t.t("completion.stats.success_rate") + " -")
-        self.token_usage_label = BodyLabel("🪙 토큰 사용량: -")
+        self.token_usage_label = BodyLabel(t.t("completion.token_usage_initial"))
 
         stats_layout.addWidget(self.duration_label)
         stats_layout.addWidget(self.total_label)
@@ -141,19 +141,22 @@ class CompletionView(QWidget):
         # Update stats
         duration = result.duration_seconds if hasattr(result, 'duration_seconds') else 0.0
         self.duration_label.setText(
-            f"소요 시간: {duration:.1f}초"
+            t.t("completion.stats_format.duration", duration=duration)
         )
         self.total_label.setText(
-            f"전체 항목: {result.total_entries:,}"
+            t.t("completion.stats_format.total_entries", total=result.total_entries)
         )
         self.translated_label.setText(
-            f"번역 완료: {result.translated_entries:,}"
+            t.t(
+                "completion.stats_format.translated",
+                translated=result.translated_entries,
+            )
         )
-        
+
         # Calculate success rate
         success_rate = (result.success_rate * 100) if result.total_entries > 0 else 0.0
         self.success_rate_label.setText(
-            f"성공률: {success_rate:.1f}%"
+            t.t("completion.stats_format.success_rate", rate=success_rate)
         )
 
         # Update token usage
@@ -161,12 +164,17 @@ class CompletionView(QWidget):
         input_tokens = getattr(result, 'total_input_tokens', 0)
         output_tokens = getattr(result, 'total_output_tokens', 0)
         self.token_usage_label.setText(
-            f"🪙 토큰 사용량: {total_tokens:,} (입력: {input_tokens:,}, 출력: {output_tokens:,})"
+            t.t(
+                "completion.stats_format.token_usage",
+                total=total_tokens,
+                input=input_tokens,
+                output=output_tokens,
+            )
         )
 
         # Update output path
         self.output_label.setText(
-            f"리소스팩: {output_path}"
+            t.t("completion.stats_format.resource_pack", path=str(output_path))
         )
 
         logger.info(
@@ -190,9 +198,13 @@ class CompletionView(QWidget):
         # For now, just show message
         from qfluentwidgets import InfoBar, InfoBarPosition
 
+        from ..i18n import get_translator
+
+        t = get_translator()
+
         InfoBar.info(
-            title="리뷰 기능",
-            content="리뷰는 번역 중 자동으로 실행됩니다. 설정에서 '리뷰 건너뛰기'를 비활성화하세요.",
+            title=t.t("completion.review_info_title"),
+            content=t.t("completion.review_info_msg"),
             orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP,

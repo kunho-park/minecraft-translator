@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from ..parsers import BaseParser
+from ..parsers import BaseParser, DumpError, ParseError
 from .base import ContentHandler
 
 if TYPE_CHECKING:
@@ -66,7 +66,7 @@ class TheVaultQuestHandler(ContentHandler):
         try:
             # Get flattened data directly from parser
             raw_data = await parser.parse()
-        except Exception as e:
+        except (ParseError, OSError) as e:
             logger.error("Failed to parse %s: %s", path, e)
             return {}
 
@@ -117,6 +117,6 @@ class TheVaultQuestHandler(ContentHandler):
             # Use BaseParser.dump to handle unflattening
             await output_parser.dump(translations)
             logger.debug("Applied translations to: %s", target_path.name)
-        except Exception as e:
+        except (DumpError, OSError) as e:
             logger.error("Failed to write %s: %s", target_path, e)
             raise

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import tempfile
 import zipfile
@@ -12,7 +13,7 @@ from typing import TYPE_CHECKING
 from ..handlers.base import create_default_registry
 
 if TYPE_CHECKING:
-    from ..models import TranslationTask
+    from ..models import ProgressCallback, TranslationTask
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ class JarModGenerator:
         tasks: list[TranslationTask],
         output_dir: Path,
         modpack_root: Path,
-        progress_callback: object | None = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> list[Path]:
         """Generate modified JAR files.
 
@@ -107,7 +108,7 @@ class JarModGenerator:
                 )
                 if jar_path:
                     generated_files.append(jar_path)
-            except Exception as e:
+            except (zipfile.BadZipFile, OSError, ValueError) as e:
                 logger.error("Failed to process JAR %s: %s", jar_name, e)
 
         logger.info("Generated %d modified JARs", len(generated_files))
@@ -135,7 +136,7 @@ class JarModGenerator:
         tasks: list[TranslationTask],
         output_dir: Path,
         modpack_root: Path,
-        progress_callback: object | None = None,
+        progress_callback: ProgressCallback | None = None,
         progress_current: int = 0,
         progress_total: int = 0,
     ) -> Path | None:
@@ -216,12 +217,10 @@ class JarModGenerator:
                         source_path,
                     )
                     output_data = task.to_output_dict()
-                    import json
-
                     content_str = json.dumps(output_data, ensure_ascii=False, indent=2)
                     replacements[internal_path] = content_str.encode("utf-8")
 
-            except Exception as e:
+            except (OSError, ValueError, TypeError, KeyError) as e:
                 logger.error(
                     "Failed to prepare translation for %s: %s",
                     task.file_pair.source_path,
@@ -297,7 +296,7 @@ class JarModGenerator:
             logger.info("Created modified JAR: %s", output_jar)
             return output_jar
 
-        except Exception as e:
+        except (zipfile.BadZipFile, OSError):
             if temp_jar.exists():
                 temp_jar.unlink()
-            raise e
+            raise

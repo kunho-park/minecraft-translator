@@ -1,5 +1,7 @@
 """Pydantic models for translation pipeline."""
 
+from .callbacks import CancelCheck, ProgressCallback, ProgressStats, ScanProgressCallback
+
 from .glossary import (
     FormattingRule,
     Glossary,
@@ -24,6 +26,11 @@ from .validation import (
 )
 
 __all__ = [
+    # Callbacks
+    "CancelCheck",
+    "ProgressCallback",
+    "ProgressStats",
+    "ScanProgressCallback",
     # Glossary
     "FormattingRule",
     "Glossary",

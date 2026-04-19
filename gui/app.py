@@ -154,12 +154,12 @@ class MainWindow(QMainWindow):
         self._account_label.setVisible(False)
         bar_layout.addWidget(self._account_label)
 
-        self._login_action_btn = PushButton("Discord 로그인")
+        self._login_action_btn = PushButton(self.translator.t("auth.login_discord"))
         self._login_action_btn.setFixedHeight(28)
         self._login_action_btn.clicked.connect(self.desktop_auth.start_login)
         bar_layout.addWidget(self._login_action_btn)
 
-        self._logout_action_btn = PushButton("로그아웃")
+        self._logout_action_btn = PushButton(self.translator.t("auth.logout"))
         self._logout_action_btn.setFixedHeight(28)
         self._logout_action_btn.setVisible(False)
         self._logout_action_btn.clicked.connect(self._on_logout_clicked)
@@ -171,7 +171,9 @@ class MainWindow(QMainWindow):
         """Update the menu bar account widget to reflect login state."""
         token = self.config.get("auth.token")
         if token:
-            name = self.config.get("auth.user_name", "사용자")
+            name = self.config.get(
+                "auth.user_name", self.translator.t("auth.default_user")
+            )
             self._account_label.setText(name)
             self._account_label.setVisible(True)
             self._login_action_btn.setVisible(False)
@@ -354,7 +356,11 @@ class MainWindow(QMainWindow):
         target_locale = str(config.get("target_locale", "ko_kr"))
 
         # Show loading dialog
-        self.loading_dialog = LoadingDialog("모드팩 스캔 중", "파일 검색 중...", self)
+        self.loading_dialog = LoadingDialog(
+            self.translator.t("modpack_select.scan_dialog_title"),
+            self.translator.t("modpack_select.scan_dialog_message"),
+            self,
+        )
         self.loading_dialog.show()
 
         self.scanner_worker = ScannerWorker(modpack_path, source_locale, target_locale)

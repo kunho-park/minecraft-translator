@@ -23,6 +23,10 @@ class ProgressCard(CardWidget):
     
     def _init_ui(self) -> None:
         """Initialize UI components."""
+        from ..i18n import get_translator
+
+        t = get_translator()
+
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -39,7 +43,7 @@ class ProgressCard(CardWidget):
         layout.addWidget(self.progress_bar)
         
         # Status label
-        self.status_label = BodyLabel("준비 중...")
+        self.status_label = BodyLabel(t.t("progress_card.status.preparing"))
         layout.addWidget(self.status_label)
     
     def update_progress(self, current: int, total: int, message: str = "") -> None:

@@ -7,17 +7,20 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from ..llm import LLMClient
 from ..models import (
+    CancelCheck,
     FormattingRule,
     Glossary,
     LanguageFilePair,
+    ProgressCallback,
+    ProgressStats,
     ProperNounRule,
     TermRule,
 )
-from ..parsers import BaseParser
+from ..parsers import BaseParser, ParseError
 from ..prompts import (
     build_glossary_paired_system_prompt,
     build_glossary_paired_user_prompt,
@@ -61,8 +64,8 @@ class GlossaryBuilder:
         llm_client: LLMClient,
         source_locale: str = "en_us",
         target_locale: str = "ko_kr",
-        progress_callback: object | None = None,
-        cancel_check: object | None = None,
+        progress_callback: ProgressCallback | None = None,
+        cancel_check: CancelCheck | None = None,
     ) -> None:
         """Initialize the glossary builder.
 
@@ -116,8 +119,6 @@ class GlossaryBuilder:
         for glossary_path in possible_paths:
             if glossary_path.exists():
                 try:
-                    import json
-
                     with open(glossary_path, encoding="utf-8") as f:
                         data = json.load(f)
 
@@ -143,7 +144,7 @@ class GlossaryBuilder:
                         self.target_locale,
                     )
                     return glossary
-                except Exception as e:
+                except (OSError, json.JSONDecodeError, ValueError, ValidationError) as e:
                     logger.warning("Failed to load vanilla glossary: %s", e)
 
         logger.info(
@@ -238,7 +239,7 @@ class GlossaryBuilder:
 
         return final_glossary
 
-    def _get_token_stats(self) -> dict[str, int]:
+    def _get_token_stats(self) -> ProgressStats:
         """Get current token usage statistics from LLM client.
 
         Returns:
@@ -274,7 +275,7 @@ class GlossaryBuilder:
                 for key, source_text in source_data.items():
                     if key in target_data:
                         all_pairs.append((source_text, target_data[key]))
-            except Exception as e:
+            except (OSError, ParseError) as e:
                 logger.warning("Failed to load pair %s: %s", pair.source_path, e)
 
         if not all_pairs:
@@ -306,7 +307,7 @@ class GlossaryBuilder:
                     break
 
                 # Check cancellation
-                if self.cancel_check and self.cancel_check():  # type: ignore[misc]
+                if self.cancel_check and self.cancel_check():
                     queue.task_done()
                     continue
 
@@ -323,12 +324,12 @@ class GlossaryBuilder:
                                 completed_batches,
                                 total_batches,
                                 stats,
-                            )  # type: ignore[misc]
+                            )
                         except Exception as e:
                             logger.warning("Progress callback failed: %s", e)
                 except Exception as e:
                     results.append(e)
-                    logger.warning("Batch extraction failed: %s", e)
+                    logger.exception("Batch extraction failed: %s", e)
                 finally:
                     queue.task_done()
 
@@ -439,7 +440,7 @@ class GlossaryBuilder:
                     )
                     await asyncio.sleep(1)
                 else:
-                    logger.error(
+                    logger.exception(
                         "Failed to extract from paired batch after %d attempts: %s",
                         max_retries + 1,
                         str(e)[:200],
@@ -468,7 +469,7 @@ class GlossaryBuilder:
             try:
                 source_data = await self._load_file(pair.source_path)
                 all_texts.extend(source_data.values())
-            except Exception as e:
+            except (OSError, ParseError) as e:
                 logger.warning("Failed to load %s: %s", pair.source_path, e)
 
         if not all_texts:
@@ -500,7 +501,7 @@ class GlossaryBuilder:
                     break
 
                 # Check cancellation
-                if self.cancel_check and self.cancel_check():  # type: ignore[misc]
+                if self.cancel_check and self.cancel_check():
                     queue.task_done()
                     continue
 
@@ -517,12 +518,12 @@ class GlossaryBuilder:
                                 completed_batches,
                                 total_batches,
                                 stats,
-                            )  # type: ignore[misc]
+                            )
                         except Exception as e:
                             logger.warning("Progress callback failed: %s", e)
                 except Exception as e:
                     results.append(e)
-                    logger.warning("Batch extraction failed: %s", e)
+                    logger.exception("Batch extraction failed: %s", e)
                 finally:
                     queue.task_done()
 
@@ -631,7 +632,7 @@ class GlossaryBuilder:
                     )
                     await asyncio.sleep(1)  # Brief delay before retry
                 else:
-                    logger.error(
+                    logger.exception(
                         "Failed to extract from English batch after %d attempts: %s",
                         max_retries + 1,
                         str(e)[:200],

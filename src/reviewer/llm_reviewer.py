@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, Field
 
 from ..llm import LLMClient
-from ..models import Glossary, ReviewIssue, ReviewResult
+from ..models import Glossary, ProgressCallback, ReviewIssue, ReviewResult
 from ..models.glossary_filter import GlossaryFilter
 from ..prompts import build_reviewer_system_prompt, build_reviewer_user_prompt
 from ..utils import get_language_name
@@ -52,7 +52,7 @@ class LLMReviewer:
         source_locale: str = "en_us",
         target_locale: str = "ko_kr",
         glossary: Glossary | None = None,
-        progress_callback: object | None = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         """Initialize the reviewer.
 
@@ -140,12 +140,12 @@ class LLMReviewer:
                                 completed_batches,
                                 total_batches,
                                 {},
-                            )  # type: ignore[misc]
+                            )
                         except Exception as e:
                             logger.warning("Progress callback failed: %s", e)
                 except Exception as e:
                     results.append(e)
-                    logger.warning("Review batch failed: %s", e)
+                    logger.exception("Review batch failed: %s", e)
                 finally:
                     queue.task_done()
 
@@ -212,7 +212,7 @@ class LLMReviewer:
             )
             return result.issues
         except Exception as e:
-            logger.error("Batch review failed: %s", e)
+            logger.exception("Batch review failed for %d pairs: %s", len(pairs), e)
             return []
 
     def _build_review_prompt(

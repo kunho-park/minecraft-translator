@@ -60,7 +60,7 @@ class TranslationProgressView(QWidget):
         title = SubtitleLabel(t.t("translation_progress.title"))
         header_layout.addWidget(title)
 
-        self.status_label = BodyLabel("준비 중...")
+        self.status_label = BodyLabel(t.t("translation_progress.status.preparing"))
         self.status_label.setStyleSheet("color: #888888;")
         header_layout.addWidget(self.status_label)
 
@@ -107,7 +107,7 @@ class TranslationProgressView(QWidget):
         stats_layout.setSpacing(15)
         stats_layout.setContentsMargins(25, 25, 25, 25)
 
-        stats_title = StrongBodyLabel("번역 통계")
+        stats_title = StrongBodyLabel(t.t("translation_progress.stats_title"))
         stats_layout.addWidget(stats_title)
 
         stats_grid = QGridLayout()
@@ -116,48 +116,54 @@ class TranslationProgressView(QWidget):
         stats_grid.setColumnStretch(3, 1)
 
         # Total
-        self.total_label = BodyLabel("전체 항목:")
+        self.total_label = BodyLabel(t.t("translation_progress.label.total"))
         self.total_value = StrongBodyLabel("0")
         stats_grid.addWidget(self.total_label, 0, 0)
         stats_grid.addWidget(self.total_value, 0, 1)
 
         # Completed
-        self.completed_label = BodyLabel("완료:")
+        self.completed_label = BodyLabel(t.t("translation_progress.label.completed"))
         self.completed_value = StrongBodyLabel("0")
         self.completed_value.setStyleSheet("color: #00B578;")  # Green
         stats_grid.addWidget(self.completed_label, 0, 2)
         stats_grid.addWidget(self.completed_value, 0, 3)
 
         # Failed
-        self.failed_label = BodyLabel("실패:")
+        self.failed_label = BodyLabel(t.t("translation_progress.label.failed"))
         self.failed_value = StrongBodyLabel("0")
         self.failed_value.setStyleSheet("color: #FF4D4F;")  # Red
         stats_grid.addWidget(self.failed_label, 1, 0)
         stats_grid.addWidget(self.failed_value, 1, 1)
 
         # Success rate
-        self.rate_label = BodyLabel("성공률:")
+        self.rate_label = BodyLabel(t.t("translation_progress.label.rate"))
         self.rate_value = StrongBodyLabel("0%")
         self.rate_value.setStyleSheet("color: #1890FF;")  # Blue
         stats_grid.addWidget(self.rate_label, 1, 2)
         stats_grid.addWidget(self.rate_value, 1, 3)
 
         # Token usage - Input tokens
-        self.input_token_label = BodyLabel("🪙 입력 토큰:")
+        self.input_token_label = BodyLabel(
+            t.t("translation_progress.label.input_tokens")
+        )
         self.input_token_value = StrongBodyLabel("0")
         self.input_token_value.setStyleSheet("color: #FFA940;")  # Orange
         stats_grid.addWidget(self.input_token_label, 2, 0)
         stats_grid.addWidget(self.input_token_value, 2, 1)
 
         # Token usage - Output tokens
-        self.output_token_label = BodyLabel("🪙 출력 토큰:")
+        self.output_token_label = BodyLabel(
+            t.t("translation_progress.label.output_tokens")
+        )
         self.output_token_value = StrongBodyLabel("0")
         self.output_token_value.setStyleSheet("color: #FFA940;")  # Orange
         stats_grid.addWidget(self.output_token_label, 2, 2)
         stats_grid.addWidget(self.output_token_value, 2, 3)
 
         # Token usage - Total tokens
-        self.total_token_label = BodyLabel("🪙 총 토큰:")
+        self.total_token_label = BodyLabel(
+            t.t("translation_progress.label.total_tokens")
+        )
         self.total_token_value = StrongBodyLabel("0")
         self.total_token_value.setStyleSheet("color: #FFA940;")  # Orange
         stats_grid.addWidget(self.total_token_label, 3, 0)
@@ -293,6 +299,10 @@ class TranslationProgressView(QWidget):
 
     def _update_eta(self, current: int, total: int) -> None:
         """Calculate and display ETA based on current phase progress."""
+        from ..i18n import get_translator
+
+        t = get_translator()
+
         if total <= 0:
             self.eta_label.setText("")
             return
@@ -304,14 +314,14 @@ class TranslationProgressView(QWidget):
             self._phase_total = total
             self._phase_start_time = now
             self._phase_start_current = current
-            self.eta_label.setText("⏱ 남은 시간 계산 중...")
+            self.eta_label.setText(t.t("translation_progress.eta.calculating"))
             return
 
         done_in_phase = current - self._phase_start_current
         elapsed = now - self._phase_start_time
 
         if done_in_phase <= 0 or elapsed < 3.0:
-            self.eta_label.setText("⏱ 남은 시간 계산 중...")
+            self.eta_label.setText(t.t("translation_progress.eta.calculating"))
             return
 
         if current >= total:
@@ -321,21 +331,44 @@ class TranslationProgressView(QWidget):
         rate = done_in_phase / elapsed
         remaining_items = total - current
         eta_seconds = remaining_items / rate
-        self.eta_label.setText(f"⏱ 남은 시간: {self._format_eta(eta_seconds)}")
+        self.eta_label.setText(
+            t.t(
+                "translation_progress.eta.remaining",
+                time=self._format_eta(eta_seconds),
+            )
+        )
 
     @staticmethod
     def _format_eta(seconds: float) -> str:
         """Format seconds into human-readable duration."""
+        from ..i18n import get_translator
+
+        t = get_translator()
+
         seconds = max(0, int(seconds))
         if seconds < 60:
-            return f"{seconds}초"
+            return t.t("translation_progress.eta.format.seconds", seconds=seconds)
         minutes = seconds // 60
         secs = seconds % 60
         if minutes < 60:
-            return f"{minutes}분 {secs}초" if secs else f"{minutes}분"
+            if secs:
+                return t.t(
+                    "translation_progress.eta.format.minutes_seconds",
+                    minutes=minutes,
+                    seconds=secs,
+                )
+            return t.t(
+                "translation_progress.eta.format.minutes_only", minutes=minutes
+            )
         hours = minutes // 60
         mins = minutes % 60
-        return f"{hours}시간 {mins}분" if mins else f"{hours}시간"
+        if mins:
+            return t.t(
+                "translation_progress.eta.format.hours_minutes",
+                hours=hours,
+                minutes=mins,
+            )
+        return t.t("translation_progress.eta.format.hours_only", hours=hours)
 
     def reset_eta(self) -> None:
         """Reset ETA tracking state for a new run."""

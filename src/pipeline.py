@@ -7,20 +7,26 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+
+from pydantic import ValidationError
 
 from .glossary import GlossaryBuilder
 from .handlers.base import create_default_registry
 from .llm import LLMClient, LLMConfig, LLMProvider
-from .models import Glossary, TranslationStatus, TranslationTask
+from .models import (
+    CancelCheck,
+    Glossary,
+    LanguageFilePair,
+    ProgressCallback,
+    ProgressStats,
+    TranslationStatus,
+    TranslationTask,
+)
 from .output import GenerationResult, ResourcePackConfig, generate_outputs
 from .reviewer import LLMReviewer
 from .scanner import ModpackScanner, ScanResult
 from .translator import BatchTranslator
 from .validator import TranslationValidator
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +126,7 @@ class PipelineResult:
                 summary[str(task.file_pair.source_path)] = failed_count
         return summary
 
-    def get_failed_file_pairs(self) -> list[object]:
+    def get_failed_file_pairs(self) -> list[LanguageFilePair]:
         """Get list of file pairs that have failed translations.
 
         Returns:
@@ -163,8 +169,8 @@ class TranslationPipeline:
     def __init__(
         self,
         config: PipelineConfig | None = None,
-        progress_callback: object | None = None,
-        cancel_check: object | None = None,
+        progress_callback: ProgressCallback | None = None,
+        cancel_check: CancelCheck | None = None,
     ) -> None:
         """Initialize the pipeline.
 
@@ -262,7 +268,7 @@ class TranslationPipeline:
         message: str,
         current: int,
         total: int,
-        stats: dict[str, object] | None = None,
+        stats: ProgressStats | None = None,
     ) -> None:
         """Report progress via callback if available.
 
@@ -275,10 +281,9 @@ class TranslationPipeline:
         logger.debug("Progress: %s (%d/%d)", message, current, total)
 
         # Add token usage to stats if available
-        if stats is None:
-            stats = {}
+        stats_dict: dict[str, object] = dict(stats) if stats is not None else {}
         token_usage = self.llm_client.get_token_usage()
-        stats.update(
+        stats_dict.update(
             {
                 "input_tokens": token_usage["input_tokens"],
                 "output_tokens": token_usage["output_tokens"],
@@ -288,7 +293,7 @@ class TranslationPipeline:
 
         if self.progress_callback:
             try:
-                self.progress_callback(message, current, total, stats)  # type: ignore[misc]
+                self.progress_callback(message, current, total, stats_dict)
             except Exception as e:
                 logger.warning("Progress callback failed: %s", e)
         else:
@@ -299,7 +304,7 @@ class TranslationPipeline:
         modpack_path: Path | str,
         output_path: Path | str,
         glossary_path: Path | str | None = None,
-        selected_files: list[object] | None = None,
+        selected_files: list[LanguageFilePair] | None = None,
     ) -> PipelineResult:
         """Run the complete translation pipeline.
 
@@ -328,7 +333,7 @@ class TranslationPipeline:
             if selected_files:
                 # Use provided selected files
                 logger.info("Using %d pre-selected files", len(selected_files))
-                file_pairs = selected_files  # type: ignore[assignment]
+                file_pairs = selected_files
 
                 # Create minimal scan result
                 from .scanner import ScanResult
@@ -341,17 +346,17 @@ class TranslationPipeline:
                 result.scan_result.paired_files = [
                     fp
                     for fp in file_pairs
-                    if fp.target_path  # type: ignore[attr-defined]
+                    if fp.target_path
                 ]
                 result.scan_result.source_only_files = [
                     fp
                     for fp in file_pairs
-                    if not fp.target_path  # type: ignore[attr-defined]
+                    if not fp.target_path
                 ]
             else:
                 # Step 1: Scan modpack
                 logger.info("Step 1: Scanning modpack...")
-                result.scan_result = self.scanner.scan(modpack_path)
+                result.scan_result = await self.scanner.scan(modpack_path)
                 file_pairs = result.scan_result.all_translation_pairs
 
             if not file_pairs:
@@ -374,7 +379,7 @@ class TranslationPipeline:
                 self._report_progress(
                     "용어집 로드 중...",
                     0,
-                    len(file_pairs),  # type: ignore[arg-type]
+                    len(file_pairs),
                 )
                 result.glossary = await GlossaryBuilder.load_glossary(
                     str(glossary_path)
@@ -382,18 +387,18 @@ class TranslationPipeline:
             elif not self.config.skip_glossary:
                 logger.info("Step 2: Building glossary...")
                 self._report_progress(
-                    f"용어집 생성 중... ({len(file_pairs)}개 파일 분석)",  # type: ignore[arg-type]
+                    f"용어집 생성 중... ({len(file_pairs)}개 파일 분석)",
                     0,
-                    len(file_pairs),  # type: ignore[arg-type]
+                    len(file_pairs),
                 )
                 result.glossary = await self.glossary_builder.build_from_pairs(
-                    file_pairs  # type: ignore[arg-type]
+                    file_pairs
                 )
 
                 self._report_progress(
                     f"용어집 생성 완료 ({len(result.glossary.term_rules)}개 용어)",
-                    len(file_pairs),  # type: ignore[arg-type]
-                    len(file_pairs),  # type: ignore[arg-type]
+                    len(file_pairs),
+                    len(file_pairs),
                 )
 
                 # Save glossary if configured (modpack-only, without vanilla)
@@ -430,9 +435,9 @@ class TranslationPipeline:
             self._report_progress(
                 "번역 작업 준비 중...",
                 0,
-                len(file_pairs),  # type: ignore[arg-type]
+                len(file_pairs),
             )
-            result.tasks = await self._create_tasks(file_pairs, result)  # type: ignore[arg-type]
+            result.tasks = await self._create_tasks(file_pairs, result)
 
             # Check cancellation
             if self.cancel_check and self.cancel_check():
@@ -480,75 +485,6 @@ class TranslationPipeline:
                     "success_rate": f"{success_rate:.1f}%",
                 },
             )
-
-            # # Step 4.5: Retry failed translations (up to 2 attempts)
-            # retry_count = 0
-            # max_retries = 2
-            # while result.failed_entries > 0 and retry_count < max_retries:
-            #     retry_count += 1
-            #     logger.info(
-            #         "Step 4.5: Retrying %d failed translations (attempt %d/%d)...",
-            #         result.failed_entries,
-            #         retry_count,
-            #         max_retries,
-            #     )
-            #     self._report_progress(
-            #         f"실패한 번역 재시도 중... ({retry_count}/{max_retries} 시도, {result.failed_entries}개)",
-            #         0,
-            #         result.failed_entries,
-            #         {
-            #             "total": result.total_entries,
-            #             "completed": result.translated_entries,
-            #             "failed": result.failed_entries,
-            #             "phase": "retry",
-            #         },
-            #     )
-
-            #     # Reset failed entries and retry
-            #     total_reset = 0
-            #     for task in result.tasks:
-            #         reset_count = task.reset_failed_entries()
-            #         total_reset += reset_count
-
-            #     if total_reset == 0:
-            #         break
-
-            #     # Re-translate only tasks with pending entries
-            #     await self._translate_tasks(result.tasks, result)
-
-            #     # Recalculate statistics
-            #     result.total_entries = 0
-            #     result.translated_entries = 0
-            #     result.failed_entries = 0
-            #     for task in result.tasks:
-            #         result.total_entries += len(task.entries)
-            #         result.translated_entries += sum(
-            #             1
-            #             for e in task.entries.values()
-            #             if e.status == TranslationStatus.COMPLETED
-            #         )
-            #         result.failed_entries += sum(
-            #             1
-            #             for e in task.entries.values()
-            #             if e.status == TranslationStatus.FAILED
-            #         )
-
-            #     success_rate = (
-            #         (result.translated_entries / result.total_entries * 100)
-            #         if result.total_entries > 0
-            #         else 0
-            #     )
-            #     self._report_progress(
-            #         f"재시도 완료: {result.translated_entries}/{result.total_entries} ({success_rate:.1f}%)",
-            #         result.translated_entries,
-            #         result.total_entries,
-            #         {
-            #             "total": result.total_entries,
-            #             "completed": result.translated_entries,
-            #             "failed": result.failed_entries,
-            #             "success_rate": f"{success_rate:.1f}%",
-            #         },
-            #     )
 
             # Check cancellation
             if self.cancel_check and self.cancel_check():
@@ -668,7 +604,7 @@ class TranslationPipeline:
 
     async def _create_tasks(
         self,
-        file_pairs: list[object] | ScanResult,
+        file_pairs: list[LanguageFilePair] | ScanResult,
         result: PipelineResult | None = None,
     ) -> list[TranslationTask]:
         """Create translation tasks from file pairs or scan result.
@@ -692,7 +628,7 @@ class TranslationPipeline:
         if isinstance(file_pairs, ScanResult):
             pairs = file_pairs.all_translation_pairs
         else:
-            pairs = file_pairs  # type: ignore[assignment]
+            pairs = file_pairs
 
         for pair in pairs:
             try:
@@ -730,7 +666,7 @@ class TranslationPipeline:
                 )
                 tasks.append(task)
 
-            except Exception as e:
+            except (OSError, ValueError, TypeError, KeyError, ValidationError) as e:
                 logger.error("Failed to create task for %s: %s", pair.source_path, e)
 
         # Update result with handler statistics
@@ -773,7 +709,10 @@ class TranslationPipeline:
 
         # Create custom progress callback for translator
         def batch_progress_callback(
-            message: str, current: int, total: int, stats: dict[str, object]
+            message: str,
+            current: int,
+            total: int,
+            stats: ProgressStats | None,
         ) -> None:
             nonlocal completed_batches
             # This is called for each batch completion
@@ -860,7 +799,7 @@ class TranslationPipeline:
                 except Exception as e:
                     completed += 1
                     failed_entries += len(task.entries)
-                    logger.error("Task translation failed: %s", e)
+                    logger.exception("Task translation failed for %s: %s", task.file_pair.source_path, e)
 
                     current_total = completed_entries + failed_entries
                     success_rate = (
@@ -962,7 +901,10 @@ class TranslationPipeline:
         completed_task_count = 0
 
         def batch_progress_callback(
-            message: str, current: int, total: int, stats: dict[str, object]
+            message: str,
+            current: int,
+            total: int,
+            stats: ProgressStats | None,
         ) -> None:
             nonlocal completed_batches
             completed_batches += 1
@@ -1013,7 +955,7 @@ class TranslationPipeline:
                             task.entries[key].translated_text = value
                 except Exception as e:
                     completed_task_count += 1
-                    logger.error("Review task failed: %s", e)
+                    logger.exception("Review task failed for %s: %s", task.file_pair.source_path, e)
                 finally:
                     queue.task_done()
 

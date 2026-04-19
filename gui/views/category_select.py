@@ -113,7 +113,7 @@ class CategorySelectionView(QWidget):
         self.prev_page_btn.clicked.connect(self.tree_widget.previous_page)
         pagination_layout.addWidget(self.prev_page_btn)
 
-        self.page_label = BodyLabel("1 / 1")
+        self.page_label = BodyLabel(t.t("category_select.page_initial"))
         self.page_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         pagination_layout.addWidget(self.page_label, stretch=1)
 

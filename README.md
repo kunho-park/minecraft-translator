@@ -15,7 +15,7 @@ AI 기반 마인크래프트 모드팩 자동 번역 도구
 ### 주요 기능
 
 - 🤖 **AI 자동 번역**: OpenAI, Anthropic, Google, Ollama 등 다양한 LLM 지원
-- 📦 **다양한 모드 지원**: FTB Quests, KubeJS, Patchouli, Origins 등
+- 📦 **다양한 모드 지원**: FTB Quests, Patchouli, Origins 등
 - 📚 **용어 사전**: 바닐라 마인크래프트 용어 사전으로 일관된 번역
 - 🎨 **GUI 애플리케이션**: 직관적인 인터페이스로 쉬운 사용
 - 🌐 **웹 플랫폼**: 번역 공유 및 다운로드 커뮤니티
@@ -119,7 +119,6 @@ LLM 서비스의 API 키가 필요합니다:
 
 ### 스크립트/프로그래밍
 
-- ✅ **KubeJS**: JavaScript 스크립트
 - ✅ **Origins**: 오리진 설명 및 파워
 
 ### 문서/가이드북

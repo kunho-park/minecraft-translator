@@ -123,11 +123,15 @@ class ScanResultView(QWidget):
 
         self.llm_base_url = LineEdit()
         self.llm_base_url.setText("http://localhost:11434")
-        self.llm_base_url.setPlaceholderText("Base URL")
+        self.llm_base_url.setPlaceholderText(
+            t.t("scan_result.llm.placeholder.base_url")
+        )
         llm_form.addRow("Base URL:", self.llm_base_url)
 
         self.llm_api_key = LineEdit()
-        self.llm_api_key.setPlaceholderText("API Key (선택사항)")
+        self.llm_api_key.setPlaceholderText(
+            t.t("scan_result.llm.placeholder.api_key")
+        )
         self.llm_api_key.setEchoMode(LineEdit.EchoMode.Password)
         llm_form.addRow("API Key:", self.llm_api_key)
 
@@ -155,22 +159,13 @@ class ScanResultView(QWidget):
         self.requests_per_minute = SpinBox()
         self.requests_per_minute.setRange(0, 10000)
         self.requests_per_minute.setValue(0)
-        self.requests_per_minute.setToolTip(
-            "API 요청 속도 제한 (분당 요청 수)\n"
-            "0 = 제한 없음\n"
-            "클라우드 API 사용 시 rate limit 오류 방지용"
-        )
+        self.requests_per_minute.setToolTip(t.t("scan_result.llm.rpm_tooltip"))
         llm_form.addRow(t.t("scan_result.llm.rpm"), self.requests_per_minute)
 
         self.tokens_per_minute = SpinBox()
         self.tokens_per_minute.setRange(0, 100_000_000)
         self.tokens_per_minute.setValue(0)
-        self.tokens_per_minute.setToolTip(
-            "API 토큰 속도 제한 (분당 토큰 수)\n"
-            "0 = 제한 없음\n"
-            "예: 4000000 = 4M TPM\n"
-            "클라우드 API 사용 시 rate limit 오류 방지용"
-        )
+        self.tokens_per_minute.setToolTip(t.t("scan_result.llm.tpm_tooltip"))
         llm_form.addRow(t.t("scan_result.llm.tpm"), self.tokens_per_minute)
 
         settings_layout.addLayout(llm_form)
@@ -196,8 +191,7 @@ class ScanResultView(QWidget):
         self.save_glossary = SwitchButton()
         self.save_glossary.setChecked(True)
         self.save_glossary.setToolTip(
-            "모드팩 전용 용어집을 저장합니다 (바닐라 용어집은 제외)\n"
-            "나중에 용어집을 재사용하거나 수동으로 편집할 수 있습니다"
+            t.t("scan_result.options.save_glossary_tooltip")
         )
         options_layout.addRow(
             t.t("scan_result.options.save_glossary"), self.save_glossary

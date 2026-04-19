@@ -72,21 +72,25 @@ class TranslationValidator:
         if glossary:
             self._precompile_glossary_patterns(glossary)
 
+    @staticmethod
+    def _compile_cjk_safe_alias(alias: str) -> re.Pattern[str]:
+        return re.compile(
+            r"(?<![a-z0-9_])" + re.escape(alias.lower()) + r"(?![a-z0-9_])"
+        )
+
     def _precompile_glossary_patterns(self, glossary: Glossary) -> None:
         for term in glossary.term_rules:
             alias_patterns = [
-                (a, re.compile(r"\b" + re.escape(a.lower()) + r"\b"))
-                for a in term.aliases
+                (a, self._compile_cjk_safe_alias(a)) for a in term.aliases
             ]
             self._compiled_term_patterns.append((term, alias_patterns))
 
         for noun in glossary.proper_noun_rules:
-            candidates = [(noun.source_like, re.compile(
-                r"\b" + re.escape(noun.source_like.lower()) + r"\b"
-            ))]
+            candidates = [
+                (noun.source_like, self._compile_cjk_safe_alias(noun.source_like))
+            ]
             candidates.extend(
-                (a, re.compile(r"\b" + re.escape(a.lower()) + r"\b"))
-                for a in noun.aliases
+                (a, self._compile_cjk_safe_alias(a)) for a in noun.aliases
             )
             self._compiled_noun_patterns.append((noun, candidates))
 

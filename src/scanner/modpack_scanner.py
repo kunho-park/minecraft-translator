@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
@@ -10,14 +11,10 @@ from dataclasses import dataclass, field
 from glob import escape as glob_escape
 from glob import iglob
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from ..handlers.base import create_default_registry
-from ..models import LanguageFilePair
+from ..models import LanguageFilePair, ScanProgressCallback
 from ..parsers import BaseParser
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +80,7 @@ class ModpackScanner:
         self,
         source_locale: str = "en_us",
         target_locale: str = "ko_kr",
-        progress_callback: Callable[[str, int, int, str], None] | None = None,
+        progress_callback: ScanProgressCallback | None = None,
     ) -> None:
         """Initialize the scanner.
 
@@ -105,7 +102,7 @@ class ModpackScanner:
             self.target_locale,
         )
 
-    def scan(self, modpack_path: Path) -> ScanResult:
+    async def scan(self, modpack_path: Path) -> ScanResult:
         """Scan a modpack for language files.
 
         Args:
@@ -116,7 +113,7 @@ class ModpackScanner:
         """
         logger.info("Scanning modpack: %s", modpack_path)
 
-        if not modpack_path.exists():
+        if not await asyncio.to_thread(modpack_path.exists):
             logger.error("Modpack path does not exist: %s", modpack_path)
             return ScanResult(modpack_path=modpack_path)
 
@@ -130,12 +127,12 @@ class ModpackScanner:
         self._report_progress(
             "ZIP 파일 추출 중...", 0, 7, "압축 파일들을 추출하고 있습니다..."
         )
-        self._extract_all_zip_files(modpack_path)
+        await self._extract_all_zip_files(modpack_path)
 
         self._report_progress(
             "Config 파일 스캔 중...", 1, 7, "config 폴더를 스캔하고 있습니다..."
         )
-        self._load_config_files(modpack_path, result)
+        await self._load_config_files(modpack_path, result)
 
         self._report_progress(
             "The Vault 퀘스트 스캔 중...",
@@ -143,32 +140,32 @@ class ModpackScanner:
             7,
             "The Vault 퀘스트 파일을 스캔하고 있습니다...",
         )
-        self._load_the_vault_quest_files(modpack_path, result)
+        await self._load_the_vault_quest_files(modpack_path, result)
 
         self._report_progress(
             "FTB Quests 스캔 중...", 2, 7, "FTB Quests 파일을 스캔하고 있습니다..."
         )
-        self._load_ftbquests_files(modpack_path, result)
+        await self._load_ftbquests_files(modpack_path, result)
 
         self._report_progress(
             "KubeJS 스캔 중...", 3, 7, "kubejs 폴더를 스캔하고 있습니다..."
         )
-        self._load_kubejs_files(modpack_path, result)
+        await self._load_kubejs_files(modpack_path, result)
 
         self._report_progress(
             "Patchouli 스캔 중...", 4, 7, "patchouli 폴더를 스캔하고 있습니다..."
         )
-        self._load_patchouli_files(modpack_path, result)
+        await self._load_patchouli_files(modpack_path, result)
 
         self._report_progress(
             "리소스팩 스캔 중...", 5, 7, "리소스팩/데이터팩을 스캔하고 있습니다..."
         )
-        self._load_resourcepack_files(modpack_path, result)
+        await self._load_resourcepack_files(modpack_path, result)
 
         self._report_progress(
             "JAR 파일 스캔 중...", 6, 7, "JAR 파일들을 처리하고 있습니다..."
         )
-        self._load_mod_files(modpack_path, result)
+        await self._load_mod_files(modpack_path, result)
 
         # Build file pairs from translation files
         self._build_file_pairs(result)
@@ -218,22 +215,29 @@ class ModpackScanner:
 
         return False
 
-    def _safe_iglob(self, pattern: str, recursive: bool = True):
+    @staticmethod
+    def _safe_iglob_sync(pattern: str, recursive: bool = True) -> list[str]:
+        """Collect glob results synchronously."""
+        return list(iglob(pattern, recursive=recursive))
+
+    async def _safe_iglob(self, pattern: str, recursive: bool = True) -> list[str]:
         """Safely iterate over glob results."""
         try:
-            return iglob(pattern, recursive=recursive)
-        except Exception as e:
+            return await asyncio.to_thread(
+                self._safe_iglob_sync, pattern, recursive
+            )
+        except (OSError, ValueError) as e:
             logger.error("Glob failed for pattern %s: %s", pattern, e)
             return []
 
-    def _extract_all_zip_files(self, modpack_path: Path) -> None:
+    async def _extract_all_zip_files(self, modpack_path: Path) -> None:
         """Extract ZIP files from modpack."""
         pattern = self._normalize_glob_path(modpack_path / "**" / "*.zip")
         logger.info("Searching for ZIP files with pattern: %s", pattern)
 
         try:
             # Get list for progress tracking
-            zip_files = list(self._safe_iglob(str(pattern), recursive=True))
+            zip_files = await self._safe_iglob(str(pattern), recursive=True)
             total_zips = len(zip_files)
 
             for i, zip_path in enumerate(zip_files):
@@ -247,13 +251,14 @@ class ModpackScanner:
                     )
 
                 try:
-                    self._extract_zip_file(zip_path)
-                except Exception as e:
+                    await self._extract_zip_file(zip_path)
+                except (zipfile.BadZipFile, OSError) as e:
                     logger.error("ZIP 파일 추출 실패 (%s): %s", zip_path, e)
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             logger.error("ZIP search failed: %s", e)
 
-    def _extract_zip_file(self, zip_path: str) -> None:
+    @staticmethod
+    def _extract_zip_file_sync(zip_path: str) -> None:
         """Extract a single ZIP file if relevant."""
         try:
             zip_path_lower = zip_path.lower()
@@ -270,16 +275,20 @@ class ModpackScanner:
             with zipfile.ZipFile(zip_path, "r") as zf:
                 logger.info("ZIP 파일 추출 중: %s", zip_path)
                 zf.extractall(extract_dir)
-        except Exception as e:
+        except (zipfile.BadZipFile, OSError) as e:
             logger.error("Failed to extract zip file %s: %s", zip_path, e)
 
-    def _load_config_files(self, modpack_path: Path, result: ScanResult) -> None:
+    async def _extract_zip_file(self, zip_path: str) -> None:
+        """Extract a single ZIP file if relevant."""
+        await asyncio.to_thread(self._extract_zip_file_sync, zip_path)
+
+    async def _load_config_files(self, modpack_path: Path, result: ScanResult) -> None:
         """Load translation files from config folder (excluding ftbquests)."""
         pattern = self._normalize_glob_path(modpack_path / "config" / "**" / "*.*")
         logger.info("Scanning config files: %s", pattern)
 
         try:
-            for file_path in self._safe_iglob(str(pattern), recursive=True):
+            for file_path in await self._safe_iglob(str(pattern), recursive=True):
                 if len(result.translation_files) >= self.max_scan_files:
                     logger.warning("Max file limit reached during config scan")
                     break
@@ -300,27 +309,29 @@ class ModpackScanner:
                                 category="Configuration",
                             )
                         )
-                except Exception as e:
+                except (OSError, ValueError, TypeError) as e:
                     logger.debug("Failed to process config file %s: %s", file_path, e)
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             logger.error("Config scan failed: %s", e)
 
         count = len([f for f in result.translation_files if f.file_type == "config"])
         logger.info("config 폴더에서 %d개 파일 발견", count)
 
-    def _load_ftbquests_files(self, modpack_path: Path, result: ScanResult) -> None:
+    async def _load_ftbquests_files(
+        self, modpack_path: Path, result: ScanResult
+    ) -> None:
         """Load translation files from ftbquests folder."""
         search_paths = [modpack_path / "config" / "ftbquests"]
         ftbquests_extensions = (".snbt", ".nbt")
 
         for path in search_paths:
-            if not path.is_dir():
+            if not await asyncio.to_thread(path.is_dir):
                 continue
             pattern = self._normalize_glob_path(path / "**" / "*.*")
             logger.info("Scanning FTB Quests: %s", pattern)
 
             try:
-                for file_path in self._safe_iglob(str(pattern), recursive=True):
+                for file_path in await self._safe_iglob(str(pattern), recursive=True):
                     if len(result.translation_files) >= self.max_scan_files:
                         logger.warning("Max file limit reached during FTB scan")
                         break
@@ -338,28 +349,28 @@ class ModpackScanner:
                                     category="FTB Quests",
                                 )
                             )
-                    except Exception as e:
+                    except (OSError, ValueError, TypeError) as e:
                         logger.debug("Failed to process FTB file %s: %s", file_path, e)
-            except Exception as e:
+            except (OSError, ValueError, TypeError) as e:
                 logger.error("FTB Quests scan failed: %s", e)
 
         count = len([f for f in result.translation_files if f.file_type == "ftbquests"])
         logger.info("ftbquests 폴더에서 %d개 파일 발견 (.snbt, .nbt)", count)
 
-    def _load_the_vault_quest_files(
+    async def _load_the_vault_quest_files(
         self, modpack_path: Path, result: ScanResult
     ) -> None:
         """Load translation files from the_vault/quest folder."""
         search_paths = [modpack_path / "config" / "the_vault" / "quest"]
 
         for path in search_paths:
-            if not path.is_dir():
+            if not await asyncio.to_thread(path.is_dir):
                 continue
             pattern = self._normalize_glob_path(path / "**" / "*.json")
             logger.info("Scanning The Vault Quests: %s", pattern)
 
             try:
-                for file_path in self._safe_iglob(str(pattern), recursive=True):
+                for file_path in await self._safe_iglob(str(pattern), recursive=True):
                     if len(result.translation_files) >= self.max_scan_files:
                         logger.warning(
                             "Max file limit reached during The Vault Quest scan"
@@ -375,13 +386,13 @@ class ModpackScanner:
                                     category="The Vault Quests",
                                 )
                             )
-                    except Exception as e:
+                    except (OSError, ValueError, TypeError) as e:
                         logger.debug(
                             "Failed to process The Vault Quest file %s: %s",
                             file_path,
                             e,
                         )
-            except Exception as e:
+            except (OSError, ValueError, TypeError) as e:
                 logger.error("The Vault Quest scan failed: %s", e)
 
         count = len(
@@ -389,13 +400,13 @@ class ModpackScanner:
         )
         logger.info("the_vault/quest 폴더에서 %d개 파일 발견", count)
 
-    def _load_kubejs_files(self, modpack_path: Path, result: ScanResult) -> None:
+    async def _load_kubejs_files(self, modpack_path: Path, result: ScanResult) -> None:
         """Load translation files from kubejs folder."""
         pattern = self._normalize_glob_path(modpack_path / "kubejs" / "**" / "*.*")
         logger.info("Scanning KubeJS: %s", pattern)
 
         try:
-            for file_path in self._safe_iglob(str(pattern), recursive=True):
+            for file_path in await self._safe_iglob(str(pattern), recursive=True):
                 if len(result.translation_files) >= self.max_scan_files:
                     logger.warning("Max file limit reached during KubeJS scan")
                     break
@@ -409,15 +420,17 @@ class ModpackScanner:
                                 category="KubeJS",
                             )
                         )
-                except Exception as e:
+                except (OSError, ValueError, TypeError) as e:
                     logger.debug("Failed to process KubeJS file %s: %s", file_path, e)
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             logger.error("KubeJS scan failed: %s", e)
 
         count = len([f for f in result.translation_files if f.file_type == "kubejs"])
         logger.info("kubejs 폴더에서 %d개 파일 발견", count)
 
-    def _load_patchouli_files(self, modpack_path: Path, result: ScanResult) -> None:
+    async def _load_patchouli_files(
+        self, modpack_path: Path, result: ScanResult
+    ) -> None:
         """Load translation files from patchouli_books folder."""
         pattern = self._normalize_glob_path(
             modpack_path / "patchouli_books" / "**" / "*.*"
@@ -425,7 +438,7 @@ class ModpackScanner:
         logger.info("Scanning Patchouli: %s", pattern)
 
         try:
-            for file_path in self._safe_iglob(str(pattern), recursive=True):
+            for file_path in await self._safe_iglob(str(pattern), recursive=True):
                 if len(result.translation_files) >= self.max_scan_files:
                     logger.warning("Max file limit reached during Patchouli scan")
                     break
@@ -439,24 +452,26 @@ class ModpackScanner:
                                 category="Patchouli Books",
                             )
                         )
-                except Exception as e:
+                except (OSError, ValueError, TypeError) as e:
                     logger.debug(
                         "Failed to process Patchouli file %s: %s", file_path, e
                     )
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             logger.error("Patchouli scan failed: %s", e)
 
         count = len([f for f in result.translation_files if f.file_type == "patchouli"])
         logger.info("patchouli 폴더에서 %d개 파일 발견", count)
 
-    def _load_resourcepack_files(self, modpack_path: Path, result: ScanResult) -> None:
+    async def _load_resourcepack_files(
+        self, modpack_path: Path, result: ScanResult
+    ) -> None:
         """Load translation files from resourcepacks and datapacks folders."""
         for folder in ["resourcepacks", "datapacks"]:
             pattern = self._normalize_glob_path(modpack_path / folder / "**" / "*.*")
             logger.info("Scanning %s: %s", folder, pattern)
 
             try:
-                for file_path in self._safe_iglob(str(pattern), recursive=True):
+                for file_path in await self._safe_iglob(str(pattern), recursive=True):
                     if len(result.translation_files) >= self.max_scan_files:
                         logger.warning("Max file limit reached during %s scan", folder)
                         break
@@ -470,11 +485,11 @@ class ModpackScanner:
                                     category="Resource/Data Packs",
                                 )
                             )
-                    except Exception as e:
+                    except (OSError, ValueError, TypeError) as e:
                         logger.debug(
                             "Failed to process resource pack file %s: %s", file_path, e
                         )
-            except Exception as e:
+            except (OSError, ValueError, TypeError) as e:
                 logger.error("%s scan failed: %s", folder, e)
 
         count = len(
@@ -486,13 +501,13 @@ class ModpackScanner:
         )
         logger.info("리소스팩/데이터팩에서 %d개 파일 발견", count)
 
-    def _load_mod_files(self, modpack_path: Path, result: ScanResult) -> None:
+    async def _load_mod_files(self, modpack_path: Path, result: ScanResult) -> None:
         """Load translation files from mods JAR files."""
         pattern = self._normalize_glob_path(modpack_path / "mods" / "*.jar")
         logger.info("Scanning Mods: %s", pattern)
 
         try:
-            jar_files = list(self._safe_iglob(str(pattern)))
+            jar_files = await self._safe_iglob(str(pattern))
             total_jars = len(jar_files)
             jar_files_found = 0
 
@@ -509,8 +524,8 @@ class ModpackScanner:
                     )
 
                 try:
-                    self._extract_from_jar(modpack_path, jar_path, result)
-                except Exception as e:
+                    await self._extract_from_jar(modpack_path, jar_path, result)
+                except (zipfile.BadZipFile, OSError) as e:
                     logger.error("JAR 파일 처리 실패 (%s): %s", jar_path, e)
 
             count = len([f for f in result.translation_files if f.file_type == "mod"])
@@ -519,10 +534,10 @@ class ModpackScanner:
                 jar_files_found,
                 count,
             )
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             logger.error("Mod scan failed: %s", e)
 
-    def _extract_from_jar(
+    def _extract_from_jar_sync(
         self, modpack_path: Path, jar_path: str, result: ScanResult
     ) -> None:
         """Extract translation files from a JAR file."""
@@ -552,8 +567,14 @@ class ModpackScanner:
                                     category=f"Mod: {mod_display_name}",
                                 )
                             )
-                    except Exception as e:
+                    except (zipfile.BadZipFile, OSError, KeyError) as e:
                         logger.debug("JAR에서 파일 추출 실패 (%s): %s", entry, e)
+
+    async def _extract_from_jar(
+        self, modpack_path: Path, jar_path: str, result: ScanResult
+    ) -> None:
+        """Extract translation files from a JAR file."""
+        await asyncio.to_thread(self._extract_from_jar_sync, modpack_path, jar_path, result)
 
     def _should_extract_from_jar(self, entry_path: str) -> bool:
         """Check if JAR entry should be extracted."""
@@ -718,11 +739,11 @@ class ModpackScanner:
         return clean_name
 
 
-def scan_modpack(
+async def scan_modpack(
     modpack_path: Path | str,
     source_locale: str = "en_us",
     target_locale: str = "ko_kr",
-    progress_callback: Callable[[str, int, int, str], None] | None = None,
+    progress_callback: ScanProgressCallback | None = None,
 ) -> ScanResult:
     """Convenience function to scan a modpack.
 
@@ -736,4 +757,4 @@ def scan_modpack(
         Scan result.
     """
     scanner = ModpackScanner(source_locale, target_locale, progress_callback)
-    return scanner.scan(Path(modpack_path))
+    return await scanner.scan(Path(modpack_path))

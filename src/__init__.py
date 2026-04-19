@@ -3,7 +3,15 @@
 from .handlers import ContentHandler, HandlerRegistry
 from .handlers.base import create_default_registry
 from .llm import LLMClient, LLMConfig, LLMProvider
-from .models import Glossary, TranslationTask
+from .models import (
+    CancelCheck,
+    Glossary,
+    LanguageFilePair,
+    ProgressCallback,
+    ProgressStats,
+    ScanProgressCallback,
+    TranslationTask,
+)
 from .pipeline import PipelineConfig, PipelineResult, TranslationPipeline, run_pipeline
 from .scanner import ModpackScanner, ScanResult, scan_modpack
 
@@ -28,6 +36,11 @@ __all__ = [
     "LLMConfig",
     "LLMProvider",
     # Models
+    "CancelCheck",
     "Glossary",
+    "LanguageFilePair",
+    "ProgressCallback",
+    "ProgressStats",
+    "ScanProgressCallback",
     "TranslationTask",
 ]

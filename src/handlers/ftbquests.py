@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from ..parsers import BaseParser
+from ..parsers import BaseParser, DumpError, ParseError
 from .base import ContentHandler
 
 if TYPE_CHECKING:
@@ -27,7 +27,7 @@ class FTBQuestsHandler(ContentHandler):
     """
 
     name: ClassVar[str] = "ftbquests"
-    priority: ClassVar[int] = 15  # Higher than parser, lower than kubejs
+    priority: ClassVar[int] = 15
 
     path_patterns: ClassVar[tuple[str, ...]] = (
         "/ftbquests/",
@@ -178,7 +178,7 @@ class FTBQuestsHandler(ContentHandler):
 
         try:
             raw_data = await parser.parse()
-        except Exception as e:
+        except (ParseError, OSError) as e:
             logger.error("Failed to parse %s: %s", path, e)
             return {}
 
@@ -274,7 +274,7 @@ class FTBQuestsHandler(ContentHandler):
         try:
             raw_data = await parser.parse()
             data = dict(raw_data)
-        except Exception as e:
+        except (ParseError, OSError) as e:
             logger.error("Failed to parse %s: %s", path, e)
             return
 
@@ -296,7 +296,7 @@ class FTBQuestsHandler(ContentHandler):
         try:
             await output_parser.dump(data)
             logger.debug("Applied translations to: %s", target_path.name)
-        except Exception as e:
+        except (DumpError, OSError) as e:
             logger.error("Failed to write %s: %s", target_path, e)
             raise
 

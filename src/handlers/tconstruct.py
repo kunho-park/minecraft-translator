@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from ..parsers import BaseParser
+from ..parsers import BaseParser, DumpError, ParseError
 from .base import ContentHandler
 
 if TYPE_CHECKING:
@@ -54,7 +54,7 @@ class TConstructHandler(ContentHandler):
         try:
             raw_data = await parser.parse()
             data = dict(raw_data)
-        except Exception as e:
+        except (ParseError, OSError) as e:
             logger.error("Failed to parse %s: %s", path, e)
             return {}
 
@@ -120,7 +120,7 @@ class TConstructHandler(ContentHandler):
         try:
             raw_data = await parser.parse()
             data = dict(raw_data)
-        except Exception as e:
+        except (ParseError, OSError) as e:
             logger.error("Failed to parse %s: %s", path, e)
             return
 
@@ -154,7 +154,7 @@ class TConstructHandler(ContentHandler):
         try:
             await output_parser.dump(data)
             logger.debug("Applied translations to: %s", target_path.name)
-        except Exception as e:
+        except (DumpError, OSError) as e:
             logger.error("Failed to write %s: %s", target_path, e)
             raise
 

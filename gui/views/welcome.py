@@ -178,10 +178,11 @@ class WelcomeView(QWidget):
         links_layout.setSpacing(20)
         links_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
-        # Usage Guide link
+        from ..i18n import get_translator
+
         self.guide_link = HyperlinkButton(
             "https://github.com/kunho-park/minecraft-translator/blob/main/wiki/%EC%82%AC%EC%9A%A9%EB%B2%95.md",
-            "사용법 설명서",
+            get_translator().t("welcome_links.usage_guide"),
             self,
         )
         links_layout.addWidget(self.guide_link)
