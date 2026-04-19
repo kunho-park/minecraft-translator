@@ -556,6 +556,7 @@ class TranslationPipeline:
             pack_config = ResourcePackConfig(
                 pack_format=self.config.pack_format,
                 pack_name=self.config.pack_name,
+                source_locale=self.config.source_locale,
                 target_locale=self.config.target_locale,
             )
 
@@ -1048,6 +1049,7 @@ class TranslationPipeline:
         pack_config = ResourcePackConfig(
             pack_format=self.config.pack_format,
             pack_name=self.config.pack_name,
+            source_locale=self.config.source_locale,
             target_locale=self.config.target_locale,
         )
 

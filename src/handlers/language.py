@@ -21,11 +21,17 @@ class LanguageHandler(ContentHandler):
 
     Strictly filters JSON files to only include those that match
     locale naming patterns (e.g. en_us.json) to avoid processing
-    non-language JSON files.
+    non-language JSON files. Accepts ``.lang`` files (Minecraft 1.12.x
+    legacy format) when located inside a ``lang/`` folder or named with
+    a locale-shaped basename (e.g. ``en_us.lang``).
     """
 
     name: ClassVar[str] = "language"
-    priority: ClassVar[int] = 0  # Fallback priority
+    priority: ClassVar[int] = 9  # Fallback priority for generic language files
+
+    _LOCALE_BASENAME_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^[a-z]{2}_[a-z]{2}\.(?:json|lang)$"
+    )
 
     def can_handle(self, path: Path) -> bool:
         """Check if file is a language file.
@@ -39,10 +45,14 @@ class LanguageHandler(ContentHandler):
         suffix = path.suffix.lower()
         name = path.name.lower()
 
-        # 1. JSON files: Must look like locale (e.g., en_us.json, ko_kr.json)
         if suffix == ".json":
-            # Match strictly: xx_xx.json only (2 letters each)
-            return bool(re.match(r"^[a-z]{2}_[a-z]{2}\.json$", name))
+            return bool(self._LOCALE_BASENAME_RE.match(name))
+
+        if suffix == ".lang":
+            if self._LOCALE_BASENAME_RE.match(name):
+                return True
+            path_str = str(path).replace("\\", "/").lower()
+            return "/lang/" in path_str
 
         return False
 

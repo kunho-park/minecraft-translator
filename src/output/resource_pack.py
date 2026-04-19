@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING
 import aiofiles
 
 from ..handlers.base import create_default_registry
+from ..parsers import BaseParser
+from ..utils.locale_helper import replace_locale_in_path
 from .jar_mod import JarModGenerator
 
 if TYPE_CHECKING:
@@ -21,8 +23,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Default resource pack metadata
-DEFAULT_PACK_FORMAT = 15  # Minecraft 1.20.x
+DEFAULT_PACK_FORMAT = 15  # Minecraft 1.20.x; older .lang-based packs typically use 3
 DEFAULT_DESCRIPTION = "Auto-translated language pack"
 
 
@@ -33,6 +34,7 @@ class ResourcePackConfig:
     pack_format: int = DEFAULT_PACK_FORMAT
     description: str = DEFAULT_DESCRIPTION
     pack_name: str = "translations"
+    source_locale: str = "en_us"
     target_locale: str = "ko_kr"
 
 
@@ -101,21 +103,17 @@ class ResourcePackGenerator:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create resource pack directory structure
         pack_dir = output_dir / "resourcepack"
         assets_dir = pack_dir / "assets"
 
-        # Clean existing pack
         if pack_dir.exists():
             shutil.rmtree(pack_dir)
 
         pack_dir.mkdir(parents=True)
         assets_dir.mkdir(parents=True)
 
-        # Generate pack.mcmeta
         await self._write_pack_mcmeta(pack_dir)
 
-        # Separate patchouli tasks from lang tasks
         lang_tasks: list[TranslationTask] = []
         patchouli_tasks: list[TranslationTask] = []
 
@@ -128,38 +126,53 @@ class ResourcePackGenerator:
             else:
                 lang_tasks.append(task)
 
-        # Generate language files (merge entries for same namespace)
         files_count = 0
-        merged_lang_data: dict[str, dict[str, str]] = {}
+        # Group by computed output path so multiple source files mapping to the
+        # same destination (e.g., split mod overrides) are merged, while files
+        # of different formats (.lang vs .json) within the same namespace are
+        # kept separate. Each entry remembers a source path for the parser to
+        # use as a structure template (needed by NBT/SNBT/JSON-with-comments).
+        merged_by_output: dict[Path, dict[str, str]] = {}
+        output_to_source: dict[Path, Path] = {}
 
         for task in lang_tasks:
             try:
-                namespace = task.file_pair.namespace or "minecraft"
-                if namespace not in merged_lang_data:
-                    merged_lang_data[namespace] = {}
-                merged_lang_data[namespace].update(task.to_output_dict())
-            except (ValueError, TypeError, KeyError) as e:
-                error_msg = f"Failed to process {task.file_pair.namespace}: {e}"
-                logger.error(error_msg)
-                result.errors.append(error_msg)
-
-        for namespace, output_data in merged_lang_data.items():
-            try:
-                lang_dir = assets_dir / namespace / "lang"
-                lang_dir.mkdir(parents=True, exist_ok=True)
-                lang_file = lang_dir / f"{self.config.target_locale}.json"
-                async with aiofiles.open(lang_file, "w", encoding="utf-8") as f:
-                    await f.write(
-                        json.dumps(output_data, ensure_ascii=False, indent=2)
+                output_path = self._compute_lang_output_path(
+                    task.file_pair.source_path,
+                    task.file_pair.namespace,
+                    assets_dir,
+                )
+                if output_path is None:
+                    error_msg = (
+                        f"Could not compute output path for "
+                        f"{task.file_pair.source_path}"
                     )
-                files_count += 1
-                logger.debug("Wrote language file: %s", lang_file)
-            except (OSError, ValueError, TypeError) as e:
-                error_msg = f"Failed to write lang file for {namespace}: {e}"
+                    logger.warning(error_msg)
+                    result.errors.append(error_msg)
+                    continue
+
+                bucket = merged_by_output.setdefault(output_path, {})
+                bucket.update(task.to_output_dict())
+                output_to_source.setdefault(output_path, task.file_pair.source_path)
+            except (ValueError, TypeError, KeyError) as e:
+                error_msg = (
+                    f"Failed to process {task.file_pair.source_path}: {e}"
+                )
                 logger.error(error_msg)
                 result.errors.append(error_msg)
 
-        # Generate patchouli book files (preserve directory structure)
+        for output_path, output_data in merged_by_output.items():
+            try:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                source_path = output_to_source[output_path]
+                await self._write_lang_output(output_path, source_path, output_data)
+                files_count += 1
+                logger.debug("Wrote language file: %s", output_path)
+            except (OSError, ValueError, TypeError) as e:
+                error_msg = f"Failed to write lang file {output_path}: {e}"
+                logger.error(error_msg)
+                result.errors.append(error_msg)
+
         for task in patchouli_tasks:
             try:
                 await self._write_patchouli_file(task, assets_dir)
@@ -205,30 +218,61 @@ class ResourcePackGenerator:
         async with aiofiles.open(mcmeta_path, "w", encoding="utf-8") as f:
             await f.write(json.dumps(mcmeta, ensure_ascii=False, indent=2))
 
-    async def _write_language_file(
+    def _compute_lang_output_path(
         self,
-        task: TranslationTask,
+        source_path: Path,
+        namespace: str | None,
         assets_dir: Path,
-    ) -> None:
-        """Write a language file for a task.
+    ) -> Path | None:
+        """Mirror a source language file under the output ``assets/`` tree.
 
-        Args:
-            task: Translation task with completed entries.
-            assets_dir: Assets directory.
+        When the source path contains ``/assets/...``, the relative tail is
+        reused so namespace/file-format/locale-case are preserved exactly.
+        Otherwise we fall back to ``assets/<namespace>/lang/<target>.<ext>``
+        so handler-extracted files (e.g. JAR-internal lang files) still land
+        in a sensible place. Returns ``None`` when even the fallback cannot
+        be computed (no namespace).
         """
-        namespace = task.file_pair.namespace or "minecraft"
-        lang_dir = assets_dir / namespace / "lang"
-        lang_dir.mkdir(parents=True, exist_ok=True)
+        source_str = str(source_path).replace("\\", "/")
+        suffix = source_path.suffix or ".json"
 
-        # Get output data
-        output_data = task.to_output_dict()
+        assets_marker = "/assets/"
+        idx = source_str.lower().find(assets_marker)
+        if idx >= 0:
+            rel_from_assets = source_str[idx + len(assets_marker) :]
+            rel_from_assets = replace_locale_in_path(
+                rel_from_assets,
+                self.config.source_locale,
+                self.config.target_locale,
+            )
+            return assets_dir / rel_from_assets
 
-        # Write language file
-        lang_file = lang_dir / f"{self.config.target_locale}.json"
-        async with aiofiles.open(lang_file, "w", encoding="utf-8") as f:
+        ns = namespace or "minecraft"
+        return assets_dir / ns / "lang" / f"{self.config.target_locale}{suffix}"
+
+    async def _write_lang_output(
+        self,
+        output_path: Path,
+        source_path: Path,
+        output_data: dict[str, str],
+    ) -> None:
+        """Write merged translation data to ``output_path`` using the parser
+        registered for the file extension.
+
+        Falling through ``BaseParser.create_parser`` keeps ``.lang`` files
+        as ``key=value`` text and ``.json`` files as JSON, instead of the
+        previous always-JSON behavior that broke 1.12.x mods. The
+        ``original_path`` is the source file so structure-preserving
+        parsers (NBT, SNBT) can re-emit untouched bytes around the
+        translated keys.
+        """
+        parser = BaseParser.create_parser(output_path, original_path=source_path)
+        if parser is not None:
+            await parser.dump(output_data)
+            return
+
+        async with aiofiles.open(output_path, "w", encoding="utf-8") as f:
             await f.write(json.dumps(output_data, ensure_ascii=False, indent=2))
-
-        logger.debug("Wrote language file: %s", lang_file)
 
     async def _write_patchouli_file(
         self,
@@ -243,7 +287,6 @@ class ResourcePackGenerator:
         source_path = task.file_pair.source_path
         source_str = str(source_path).replace("\\", "/")
 
-        # Extract relative path from 'assets/' onwards
         assets_marker = "/assets/"
         idx = source_str.lower().find(assets_marker)
         if idx >= 0:
@@ -255,12 +298,14 @@ class ResourcePackGenerator:
             )
             return
 
-        # Replace source locale with target locale in path
-        rel_from_assets = rel_from_assets.replace("en_us", self.config.target_locale)
+        rel_from_assets = replace_locale_in_path(
+            rel_from_assets,
+            self.config.source_locale,
+            self.config.target_locale,
+        )
         output_path = assets_dir / rel_from_assets
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Use handler to apply translations (preserves nested JSON structure)
         handler = self.registry.get_handler(source_path)
         if handler:
             output_data = task.to_output_dict()
@@ -282,13 +327,21 @@ class OverrideGenerator:
     rather than being loaded as a resource pack.
     """
 
-    def __init__(self, target_locale: str = "ko_kr") -> None:
+    def __init__(
+        self,
+        target_locale: str = "ko_kr",
+        source_locale: str = "en_us",
+    ) -> None:
         """Initialize the generator.
 
         Args:
             target_locale: Target language locale.
+            source_locale: Source language locale (used to substitute the
+                locale token inside output paths while preserving the
+                original case style).
         """
         self.target_locale = target_locale
+        self.source_locale = source_locale
         self.registry = create_default_registry()
         logger.info("Initialized OverrideGenerator")
 
@@ -375,22 +428,20 @@ class OverrideGenerator:
         """
         source_path = Path(task.file_pair.source_path)
 
-        # Calculate relative path from modpack root
         try:
             rel_path = source_path.relative_to(modpack_root)
         except ValueError:
             rel_path = source_path.name
 
-        # Replace source locale with target locale in path
-        rel_path_str = str(rel_path).replace("en_us", self.target_locale)
+        rel_path_str = replace_locale_in_path(
+            str(rel_path), self.source_locale, self.target_locale
+        )
         output_path = override_dir / rel_path_str
 
-        # Create parent directories
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         output_data = task.to_output_dict()
 
-        # Try to use handler first (preserves structure)
         handler = self.registry.get_handler(source_path)
         if handler:
             try:
@@ -403,9 +454,6 @@ class OverrideGenerator:
                     source_path,
                     e,
                 )
-
-        # Fallback to parser
-        from ..parsers import BaseParser
 
         parser = BaseParser.create_parser(output_path, source_path)
         if parser is None:
@@ -442,12 +490,17 @@ async def generate_outputs(
     output_dir = Path(output_dir)
     modpack_root = Path(modpack_root)
 
-    # Separate tasks by type
     resource_pack_tasks: list[TranslationTask] = []
     override_tasks: list[TranslationTask] = []
     jar_mod_tasks: list[TranslationTask] = []
 
-    override_gen = OverrideGenerator()
+    if pack_config is not None:
+        override_gen = OverrideGenerator(
+            target_locale=pack_config.target_locale,
+            source_locale=pack_config.source_locale,
+        )
+    else:
+        override_gen = OverrideGenerator()
 
     for task in tasks:
         source_str = str(task.file_pair.source_path).lower().replace("\\", "/")

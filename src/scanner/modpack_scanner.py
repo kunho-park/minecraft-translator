@@ -158,8 +158,12 @@ class ModpackScanner:
         await self._load_patchouli_files(modpack_path, result)
 
         self._report_progress(
-            "리소스팩 스캔 중...", 5, 7, "리소스팩/데이터팩을 스캔하고 있습니다..."
+            "리소스팩 스캔 중...",
+            5,
+            7,
+            "리소스팩 ZIP 추출 및 스캔 중...",
         )
+        await self._extract_resource_pack_zips(modpack_path)
         await self._load_resourcepack_files(modpack_path, result)
 
         self._report_progress(
@@ -281,6 +285,57 @@ class ModpackScanner:
     async def _extract_zip_file(self, zip_path: str) -> None:
         """Extract a single ZIP file if relevant."""
         await asyncio.to_thread(self._extract_zip_file_sync, zip_path)
+
+    @staticmethod
+    def _extract_resource_pack_sync(zip_path: str, extract_dir: str) -> None:
+        """Extract a Minecraft resource pack ZIP into the given directory.
+
+        Resource packs are user-installed asset overrides shipped as ZIP
+        archives that the scanner cannot inspect without unpacking. We
+        extract them into the modpack-local cache so the existing
+        glob-based resource pack scan can pick up ``assets/<ns>/lang/*``
+        entries inside.
+        """
+        os.makedirs(extract_dir, exist_ok=True)
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            logger.info("리소스팩 ZIP 추출 중: %s", zip_path)
+            zf.extractall(extract_dir)
+
+    async def _extract_resource_pack_zips(self, modpack_path: Path) -> None:
+        """Unpack every ZIP found directly under ``resourcepacks/``.
+
+        We intentionally do NOT extract ``datapacks/*.zip`` here: the
+        output router (`_should_be_jar_mod`) treats any ``.mct_cache``
+        path containing ``data/`` as a JAR-mod candidate, so extracting
+        datapacks would mis-route their contents.
+        """
+        pattern = self._normalize_glob_path(
+            modpack_path / "resourcepacks" / "*.zip"
+        )
+        zip_files = await self._safe_iglob(str(pattern), recursive=False)
+        if not zip_files:
+            return
+
+        cache_root = modpack_path / ".mct_cache" / "resourcepacks"
+
+        for zip_path in zip_files:
+            zip_name = os.path.basename(zip_path)
+            extract_dir = cache_root / zip_name
+
+            if await asyncio.to_thread(extract_dir.exists):
+                logger.debug("리소스팩 이미 추출됨: %s", zip_name)
+                continue
+
+            try:
+                await asyncio.to_thread(
+                    self._extract_resource_pack_sync,
+                    zip_path,
+                    str(extract_dir),
+                )
+            except (zipfile.BadZipFile, OSError) as e:
+                logger.error(
+                    "리소스팩 추출 실패 (%s): %s", zip_path, e
+                )
 
     async def _load_config_files(self, modpack_path: Path, result: ScanResult) -> None:
         """Load translation files from config folder (excluding ftbquests)."""
@@ -465,10 +520,22 @@ class ModpackScanner:
     async def _load_resourcepack_files(
         self, modpack_path: Path, result: ScanResult
     ) -> None:
-        """Load translation files from resourcepacks and datapacks folders."""
+        """Load translation files from resource packs and data packs.
+
+        Each folder is scanned in two locations:
+        - The original ``resourcepacks/`` / ``datapacks/`` directory for
+          loose (already unzipped) packs.
+        - The ``.mct_cache/<folder>/`` directory holding contents of ZIP
+          packs we extracted in :meth:`_extract_resource_pack_zips`.
+        """
+        scan_targets: list[tuple[str, Path]] = []
         for folder in ["resourcepacks", "datapacks"]:
-            pattern = self._normalize_glob_path(modpack_path / folder / "**" / "*.*")
-            logger.info("Scanning %s: %s", folder, pattern)
+            scan_targets.append((folder, modpack_path / folder))
+            scan_targets.append((folder, modpack_path / ".mct_cache" / folder))
+
+        for folder, root in scan_targets:
+            pattern = self._normalize_glob_path(root / "**" / "*.*")
+            logger.info("Scanning %s (%s): %s", folder, root, pattern)
 
             try:
                 for file_path in await self._safe_iglob(str(pattern), recursive=True):

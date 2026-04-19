@@ -12,8 +12,11 @@ from .base import BaseParser, DumpError, ParseError
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+PARSE_ESCAPES_DIRECTIVE = "#PARSE_ESCAPES"
 
 
 class LangParser(BaseParser):
@@ -21,6 +24,9 @@ class LangParser(BaseParser):
 
     Handles key=value format with one entry per line.
     Properly processes JSON escape sequences for special characters.
+    Preserves the ``#PARSE_ESCAPES`` directive on dump when the source
+    file declared it (required by BetterQuesting and other 1.12.x mods
+    that opt into escape handling explicitly).
     """
 
     file_extensions = (".lang",)
@@ -50,11 +56,9 @@ class LangParser(BaseParser):
         for line_num, line in enumerate(text.splitlines(), start=1):
             line = line.strip()
 
-            # Skip empty lines and comments
             if not line or line.startswith("#"):
                 continue
 
-            # Skip lines without =
             if "=" not in line:
                 logger.debug("Skipping line %d (no '=' found): %s", line_num, line[:50])
                 continue
@@ -63,7 +67,6 @@ class LangParser(BaseParser):
             key = key.strip()
             value = value.strip()
 
-            # Process JSON escape sequences for special characters
             try:
                 parsed_value = json.loads(f'"{value}"')
             except json.JSONDecodeError:
@@ -89,11 +92,16 @@ class LangParser(BaseParser):
         """
         logger.info("Dumping .lang file: %s", self.path)
 
+        directive_source = self.original_path if self.original_path else self.path
+        has_parse_escapes = await self._has_parse_escapes_directive(directive_source)
+
         lines: list[str] = []
+        if has_parse_escapes:
+            lines.append(PARSE_ESCAPES_DIRECTIVE)
+            lines.append("")
+
         for key, value in sorted(data.items()):
-            # Escape special characters using JSON encoding
             if isinstance(value, str):
-                # json.dumps adds quotes, so we strip them
                 escaped_value = json.dumps(value, ensure_ascii=False)[1:-1]
             else:
                 escaped_value = str(value)
@@ -106,3 +114,24 @@ class LangParser(BaseParser):
             raise DumpError(self.path, f"Could not write file: {e}") from e
 
         logger.debug("Successfully wrote %d entries to %s", len(data), self.path)
+
+    @staticmethod
+    async def _has_parse_escapes_directive(source: Path) -> bool:
+        """Return True if the first non-blank line declares ``#PARSE_ESCAPES``.
+
+        BetterQuesting and other older mods only honor escape sequences
+        (``\\n``, ``\\u0027``, etc.) when this header is present, so the
+        dump path must echo it back when the source file had one.
+        """
+        try:
+            async with aiofiles.open(
+                source, encoding="utf-8", errors="replace"
+            ) as f:
+                async for raw_line in f:
+                    line = raw_line.strip()
+                    if not line:
+                        continue
+                    return line.upper() == PARSE_ESCAPES_DIRECTIVE
+        except (OSError, FileNotFoundError):
+            return False
+        return False
