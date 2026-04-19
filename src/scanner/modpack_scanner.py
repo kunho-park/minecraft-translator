@@ -165,6 +165,7 @@ class ModpackScanner:
         )
         await self._extract_resource_pack_zips(modpack_path)
         await self._load_resourcepack_files(modpack_path, result)
+        await self._load_resources_overlay_files(modpack_path, result)
 
         self._report_progress(
             "JAR 파일 스캔 중...", 6, 7, "JAR 파일들을 처리하고 있습니다..."
@@ -568,6 +569,54 @@ class ModpackScanner:
         )
         logger.info("리소스팩/데이터팩에서 %d개 파일 발견", count)
 
+    async def _load_resources_overlay_files(
+        self, modpack_path: Path, result: ScanResult
+    ) -> None:
+        """Load translation files from the ``resources/`` overlay folder.
+
+        The 1.12.x launcher convention (Twitch/CurseForge, ATLauncher) auto-
+        mounts ``<modpack>/resources/<namespace>/<asset_type>/...`` as a
+        default-loaded resource pack overlay, so language files like
+        ``resources/betterquesting/lang/en_us.lang`` are translatable but
+        live OUTSIDE both ``resourcepacks/`` and the standard ``assets/``
+        layout. This stage picks them up.
+        """
+        root = modpack_path / "resources"
+        if not await asyncio.to_thread(root.is_dir):
+            return
+
+        pattern = self._normalize_glob_path(root / "**" / "*.*")
+        logger.info("Scanning resources overlay: %s", pattern)
+
+        try:
+            for file_path in await self._safe_iglob(str(pattern), recursive=True):
+                if len(result.translation_files) >= self.max_scan_files:
+                    logger.warning(
+                        "Max file limit reached during resources overlay scan"
+                    )
+                    break
+
+                try:
+                    if self._is_translation_file(file_path):
+                        result.translation_files.append(
+                            TranslationFile(
+                                input_path=file_path,
+                                file_type="resources",
+                                category="Resources Overlay",
+                            )
+                        )
+                except (OSError, ValueError, TypeError) as e:
+                    logger.debug(
+                        "Failed to process resources file %s: %s", file_path, e
+                    )
+        except (OSError, ValueError, TypeError) as e:
+            logger.error("Resources overlay scan failed: %s", e)
+
+        count = len(
+            [f for f in result.translation_files if f.file_type == "resources"]
+        )
+        logger.info("resources 폴더에서 %d개 파일 발견", count)
+
     async def _load_mod_files(self, modpack_path: Path, result: ScanResult) -> None:
         """Load translation files from mods JAR files."""
         pattern = self._normalize_glob_path(modpack_path / "mods" / "*.jar")
@@ -772,25 +821,29 @@ class ModpackScanner:
         parts = file_path.parts
         mod_name = None
 
-        # Try to extract clean mod name from jar if available
         if tf.file_type == "mod" and tf.jar_name:
             mod_name = self._clean_mod_name(tf.jar_name)
 
-        # Look for 'assets' directory first (most reliable for resource packs)
         try:
             assets_idx = parts.index("assets")
             if assets_idx + 1 < len(parts):
                 namespace = parts[assets_idx + 1]
-                # If we have a mod name, use it as mod_id, otherwise use namespace
                 return namespace, (mod_name if mod_name else namespace)
         except ValueError:
             pass
 
-        # If no assets directory, but we have a mod name, use it
+        if tf.file_type == "resources":
+            try:
+                resources_idx = parts.index("resources")
+                if resources_idx + 1 < len(parts):
+                    namespace = parts[resources_idx + 1]
+                    return namespace, namespace
+            except ValueError:
+                pass
+
         if mod_name:
             return mod_name, mod_name
 
-        # Fallback: use file type as namespace
         return tf.file_type, tf.file_type
 
     def _clean_mod_name(self, jar_name: str) -> str:

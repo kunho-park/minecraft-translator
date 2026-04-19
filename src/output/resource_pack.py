@@ -226,26 +226,31 @@ class ResourcePackGenerator:
     ) -> Path | None:
         """Mirror a source language file under the output ``assets/`` tree.
 
-        When the source path contains ``/assets/...``, the relative tail is
-        reused so namespace/file-format/locale-case are preserved exactly.
-        Otherwise we fall back to ``assets/<namespace>/lang/<target>.<ext>``
-        so handler-extracted files (e.g. JAR-internal lang files) still land
-        in a sensible place. Returns ``None`` when even the fallback cannot
-        be computed (no namespace).
+        Two source layouts are recognized explicitly so the original
+        namespace, file format, and locale-case all survive into output:
+        - ``.../assets/<ns>/lang/<locale>.<ext>`` - standard resource pack
+          / mod JAR layout.
+        - ``.../resources/<ns>/lang/<locale>.<ext>`` - 1.12.x launcher
+          overlay (Twitch/CurseForge, ATLauncher) where ``resources/``
+          itself is the asset root, with no ``assets/`` prefix.
+
+        Anything else falls back to ``assets/<namespace>/lang/<target>.<ext>``
+        so handler-extracted files (e.g. JAR-internal lang files without an
+        ``assets/`` segment) still land somewhere usable.
         """
         source_str = str(source_path).replace("\\", "/")
         suffix = source_path.suffix or ".json"
 
-        assets_marker = "/assets/"
-        idx = source_str.lower().find(assets_marker)
-        if idx >= 0:
-            rel_from_assets = source_str[idx + len(assets_marker) :]
-            rel_from_assets = replace_locale_in_path(
-                rel_from_assets,
-                self.config.source_locale,
-                self.config.target_locale,
-            )
-            return assets_dir / rel_from_assets
+        for marker in ("/assets/", "/resources/"):
+            idx = source_str.lower().find(marker)
+            if idx >= 0:
+                rel_from_marker = source_str[idx + len(marker) :]
+                rel_from_marker = replace_locale_in_path(
+                    rel_from_marker,
+                    self.config.source_locale,
+                    self.config.target_locale,
+                )
+                return assets_dir / rel_from_marker
 
         ns = namespace or "minecraft"
         return assets_dir / ns / "lang" / f"{self.config.target_locale}{suffix}"
