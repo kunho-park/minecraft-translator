@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QAction, QDesktopServices
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QMainWindow,
@@ -22,6 +22,8 @@ from .config import get_config
 from .i18n import get_translator, set_language
 
 logger = logging.getLogger(__name__)
+
+MORU_DOWNLOAD_URL = "https://github.com/kunho-park/moru-app/releases/latest"
 
 load_dotenv()
 
@@ -91,9 +93,25 @@ class MainWindow(QMainWindow):
         # Create menu bar
         self._create_menu_bar()
 
-        # Check for updates on startup
-        from PySide6.QtCore import QTimer
+        # Show the successor-app notice after the main window becomes visible.
+        QTimer.singleShot(0, self._show_moru_migration_notice)
 
+    def _show_moru_migration_notice(self) -> None:
+        """Prompt users to move to the successor desktop app."""
+        from qfluentwidgets import MessageBox
+
+        dialog = MessageBox(
+            self.translator.t("migration.title"),
+            self.translator.t("migration.message"),
+            self,
+        )
+        dialog.yesButton.setText(self.translator.t("migration.download"))
+        dialog.cancelButton.setText(self.translator.t("migration.continue"))
+
+        if dialog.exec() and not QDesktopServices.openUrl(QUrl(MORU_DOWNLOAD_URL)):
+            logger.warning("Failed to open moru download page: %s", MORU_DOWNLOAD_URL)
+
+        # Avoid competing with the migration dialog while it is open.
         QTimer.singleShot(1000, lambda: self.check_updates(manual=False))
 
     def _create_menu_bar(self) -> None:

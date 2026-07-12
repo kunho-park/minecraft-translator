@@ -2,6 +2,9 @@
 
 AI 기반 마인크래프트 모드팩 자동 번역 도구
 
+> [!IMPORTANT]
+> 이 프로젝트의 후속 앱은 [moru](https://github.com/kunho-park/moru-app/releases/latest)입니다. 새 번역 작업에는 moru를 사용해 주세요.
+
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.13+-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)

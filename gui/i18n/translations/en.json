@@ -244,6 +244,12 @@
       "english": "English"
     }
   },
+  "migration": {
+    "title": "Please switch to moru",
+    "message": "Modpack Translator has moved to moru.\nUse moru for the latest features and improved translation quality.",
+    "download": "Download moru",
+    "continue": "Continue here"
+  },
   "update": {
     "title": "Update Available",
     "available": "New version {version} is available!",

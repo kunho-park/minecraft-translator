@@ -244,6 +244,12 @@
             "english": "English"
         }
     },
+    "migration": {
+        "title": "새로운 앱 moru를 사용해 주세요",
+        "message": "모드팩 번역기는 moru로 이전되었습니다.\n더 나은 번역 품질과 최신 기능을 위해 moru를 사용해 주세요.",
+        "download": "moru 다운로드",
+        "continue": "기존 앱 계속 사용"
+    },
     "update": {
         "title": "업데이트 알림",
         "available": "새로운 버전 {version}이(가) 사용 가능합니다!",
