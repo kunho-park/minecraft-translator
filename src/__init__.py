@@ -15,7 +15,7 @@ from .models import (
 from .pipeline import PipelineConfig, PipelineResult, TranslationPipeline, run_pipeline
 from .scanner import ModpackScanner, ScanResult, scan_modpack
 
-__version__ = "2.5.1"
+__version__ = "2.5.2"
 
 __all__ = [
     # Pipeline
